@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why We Write Tests</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --card: #151a23;
+    --card2: #1c2330;
+    --border: #2a3345;
+    --text: #e8edf6;
+    --muted: #8b98af;
+    --accent: #6478f0;
+    --ok: #34c98e;
+    --danger: #ef5b6a;
+    --warn: #dfa514;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 19px; }
+  body {
+    background: var(--bg);
+    background-image: radial-gradient(ellipse 70% 45% at 50% -10%, rgba(100,120,240,.14), transparent);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    min-height: 100vh;
+    padding-bottom: 4rem;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+
+  /* ---------- header ---------- */
+  header { display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap; padding: 1.2rem 0 1.6rem; }
+  header .eyebrow { font-size: .75rem; letter-spacing: .18em; color: var(--accent); font-weight: 700; }
+  header h1 {
+    font-size: 2.4rem; margin-top: .2rem;
+    background: linear-gradient(90deg, #8b9bf5, #4fd6bb);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  header .sub { color: var(--muted); font-size: 1.05rem; margin-top: .3rem; }
+  header .spacer { flex: 1; }
+  #resetBtn {
+    font-size: .95rem; padding: .65rem 1.2rem; border-radius: 10px; cursor: pointer;
+    background: transparent; color: var(--muted); border: 1px solid var(--border);
+    transition: .15s;
+  }
+  #resetBtn:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* ---------- tabs ---------- */
+  nav { display: flex; gap: .3rem; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; flex-wrap: wrap; }
+  nav button {
+    font-size: 1.02rem; padding: .8rem 1.3rem; cursor: pointer;
+    background: none; color: var(--muted); border: none;
+    border-bottom: 3px solid transparent; margin-bottom: -1px; transition: .15s;
+  }
+  nav button:hover { color: var(--text); }
+  nav button.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+  nav button .num { color: var(--accent); font-weight: 700; margin-right: .45rem; }
+  section.tab { display: none; animation: fadein .25s; }
+  section.tab.show { display: block; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; } }
+
+  /* ---------- cards ---------- */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 1.5rem; margin-bottom: 1.2rem;
+  }
+  .howto { border-left: 3px solid var(--accent); }
+  .howto h3 { font-size: 1.05rem; margin-bottom: .7rem; }
+  .howto ol { margin-left: 1.4rem; color: var(--muted); line-height: 1.85; }
+  .howto b { color: var(--text); font-weight: 600; }
+  .howto code {
+    background: #0a0d12; padding: .15rem .5rem; border-radius: 6px;
+    font-size: .82rem; color: #9db4e8; font-family: ui-monospace, monospace;
+  }
+  .badges { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: 1rem; }
+  .badge { font-size: .8rem; padding: .3rem .8rem; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+  .badge.ok { border-color: rgba(52,201,142,.5); color: var(--ok); }
+  .badge.bad { border-color: rgba(239,91,106,.5); color: var(--danger); }
+
+  /* ---------- calculator ---------- */
+  .calc { display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap; padding: 1.5rem 0; }
+  .calc input {
+    width: 160px; font-size: 2rem; text-align: center; padding: .6rem;
+    background: var(--card2); border: 1px solid var(--border); border-radius: 12px; color: var(--text);
+  }
+  .calc .ops { display: flex; flex-direction: column; gap: .5rem; }
+  .calc .ops button {
+    width: 58px; height: 58px; font-size: 1.6rem; border-radius: 12px; cursor: pointer;
+    background: var(--card2); color: var(--text); border: 1px solid var(--border); transition: .15s;
+  }
+  .calc .ops button:hover { border-color: var(--accent); }
+  .calc .ops button.picked { background: var(--accent); border-color: transparent; color: white; }
+  .calc .eq { font-size: 2.2rem; color: var(--muted); }
+  .calc .screen {
+    min-width: 220px; padding: 1rem 1.5rem; font-size: 2.6rem; text-align: center;
+    background: #0a0d12; border-radius: 12px; color: var(--text);
+    font-family: ui-monospace, monospace; border: 1px solid var(--border);
+  }
+
+  /* ---------- seats ---------- */
+  .phones { display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center; }
+  .phone {
+    width: 380px; background: var(--card2); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.2rem; flex: 0 0 auto;
+  }
+  .phone .who { display: flex; align-items: center; gap: .7rem; font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: white;
+    font-size: .95rem; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  }
+  .phone .who .refresh {
+    margin-left: auto; font-size: .85rem; padding: .35rem .8rem; border-radius: 8px; cursor: pointer;
+    background: transparent; color: var(--muted); border: 1px solid var(--border);
+  }
+  .phone .who .refresh:hover { color: var(--text); }
+  .screen-label {
+    text-align: center; color: var(--muted); font-size: .7rem; letter-spacing: .35em;
+    padding: .35rem; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1rem;
+  }
+  .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: .45rem; }
+  .seat {
+    aspect-ratio: 1; border-radius: 8px 8px 4px 4px; cursor: pointer; font-size: .78rem;
+    background: var(--card); border: 1px solid var(--border); color: var(--muted);
+    display: flex; align-items: center; justify-content: center; transition: .15s;
+  }
+  .seat:hover { border-color: var(--accent); color: var(--text); }
+  .seat.taken { background: rgba(239,91,106,.12); border-color: var(--danger); color: var(--danger); cursor: not-allowed; }
+  .seat.mine { background: rgba(52,201,142,.12); border-color: var(--ok); color: var(--ok); }
+  .seat.pending { animation: pulse .8s infinite; border-color: var(--warn); color: var(--warn); }
+  @keyframes pulse { 50% { opacity: .4; } }
+  .phone .status { min-height: 2.2rem; margin-top: 1rem; font-size: .95rem; color: var(--muted); }
+  .phone .status.good { color: var(--ok); }
+  .phone .status.bad { color: var(--danger); }
+  .ticketBtn {
+    display: none; width: 100%; margin-top: .8rem; padding: .75rem; font-size: 1rem;
+    border-radius: 10px; cursor: pointer; border: none;
+    background: var(--accent); color: white; font-weight: 600;
+  }
+  .ticket {
+    margin-top: .8rem; padding: 1rem; border-radius: 10px; display: none; font-size: .95rem;
+    border: 1px dashed var(--ok); background: #10151d;
+  }
+  .ticket.fail { border-color: var(--danger); background: rgba(239,91,106,.08); color: var(--danger); }
+  .ticket .trow { display: flex; align-items: center; gap: 1rem; }
+  .qr { display: grid; grid-template-columns: repeat(9, 7px); grid-auto-rows: 7px; gap: 1px; }
+  .qr i { background: #10151d; } .qr i.on { background: var(--text); }
+
+  /* ---------- login ---------- */
+  .loginbox { max-width: 460px; margin: 0 auto; padding: 1rem 0; }
+  .loginbox input {
+    width: 100%; font-size: 1.1rem; padding: .8rem 1rem; margin-bottom: .8rem;
+    background: var(--card2); border: 1px solid var(--border); border-radius: 10px; color: var(--text);
+  }
+  .loginbox .btns { display: flex; gap: .8rem; }
+  .loginbox .btns button {
+    flex: 1; font-size: 1.05rem; padding: .8rem; border-radius: 10px; cursor: pointer; border: none; font-weight: 600;
+  }
+  #signupBtn { background: var(--accent); color: white; }
+  #loginBtn { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  #loginOut { margin-top: 1.2rem; }
+  .msg { padding: 1rem 1.2rem; border-radius: 10px; font-size: 1.05rem; }
+  .msg.good { background: rgba(52,201,142,.1); border: 1px solid var(--ok); color: var(--ok); }
+  .msg.bad { background: rgba(239,91,106,.08); border: 1px solid var(--danger); color: var(--danger); }
+  .msg.crash { font-size: 1.15rem; text-align: center; }
+  .msg.crash small { display: block; color: var(--muted); font-size: .85rem; margin-top: .5rem; line-height: 1.6; }
+
+  /* ---------- checkout ---------- */
+  .shop { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+  .productlist { flex: 1; min-width: 300px; display: grid; gap: .8rem; align-content: start; }
+  .product {
+    display: flex; align-items: center; gap: 1rem; padding: 1rem 1.2rem;
+    background: var(--card2); border: 1px solid var(--border); border-radius: 12px; font-size: 1.05rem;
+  }
+  .product .price { margin-left: auto; color: var(--muted); }
+  .product .step { display: flex; align-items: center; gap: .7rem; }
+  .product .step button {
+    width: 36px; height: 36px; font-size: 1.2rem; border-radius: 8px; cursor: pointer;
+    background: var(--card); color: var(--text); border: 1px solid var(--border);
+  }
+  .product .qty { min-width: 1.4rem; text-align: center; font-weight: 600; }
+  .summary { width: 380px; flex: 0 0 auto; }
+  .summary .row { display: flex; justify-content: space-between; padding: .4rem 0; font-size: 1.02rem; color: var(--muted); }
+  .summary .row.total { font-size: 1.4rem; color: var(--text); font-weight: 700; border-top: 1px solid var(--border); margin-top: .6rem; padding-top: .8rem; }
+  .summary .row .old { text-decoration: line-through; color: var(--muted); font-size: 1rem; margin-right: .6rem; font-weight: 400; }
+  .discount { display: flex; gap: .6rem; margin: 0 0 1rem; }
+  .discount input {
+    flex: 1; font-size: .95rem; padding: .7rem 1rem; text-transform: uppercase;
+    background: var(--card2); border: 1px solid var(--border); border-radius: 10px; color: var(--text);
+    font-family: ui-monospace, monospace;
+  }
+  .discount button {
+    padding: .7rem 1.2rem; font-size: .95rem; border-radius: 10px; cursor: pointer;
+    background: transparent; color: var(--accent); border: 1px solid var(--accent);
+  }
+  #payBtn {
+    width: 100%; padding: .95rem; font-size: 1.15rem; font-weight: 700; border-radius: 12px;
+    cursor: pointer; border: none; margin-top: .5rem;
+    background: var(--accent); color: white;
+  }
+  #receipt { margin-top: 1rem; display: none; }
+  .receipt-card { padding: 1.2rem; border-radius: 12px; border: 1px dashed var(--ok); background: #10151d; font-size: .98rem; }
+  .receipt-card .charged { font-size: 1.8rem; font-weight: 700; color: var(--ok); margin-top: .3rem; }
+  .receipt-card .uhoh { color: var(--danger); font-size: 1rem; margin-top: .6rem; line-height: 1.6; }
+
+  /* ---------- pizza shop v2 (regression) ---------- */
+  .shipbar {
+    display: flex; align-items: center; gap: .9rem; flex-wrap: wrap;
+    margin-bottom: 1.3rem; padding-bottom: 1.1rem; border-bottom: 1px dashed var(--border);
+  }
+  .verchip { font-size: .85rem; font-weight: 700; padding: .35rem .9rem; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+  .verchip.v2 { border-color: var(--accent); color: #9db4e8; background: rgba(100,120,240,.1); }
+  .combo-banner { display: none; font-size: .92rem; color: var(--warn); border: 1px dashed var(--warn); padding: .35rem .9rem; border-radius: 999px; }
+  .shipbar .spacer { flex: 1; }
+  #shipBtn {
+    padding: .7rem 1.3rem; font-size: 1rem; font-weight: 600; border: none; border-radius: 10px;
+    cursor: pointer; background: var(--accent); color: white;
+  }
+  #shipBtn.rollback { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .bigpay {
+    width: 100%; padding: .95rem; font-size: 1.15rem; font-weight: 700; border-radius: 12px;
+    cursor: pointer; border: none; margin-top: .5rem; background: var(--accent); color: white;
+  }
+  .receipt-card small { color: var(--muted); font-weight: 400; }
+
+  /* ---------- code panel ---------- */
+  .codecard h3 { font-size: 1.05rem; margin-bottom: .8rem; }
+  .codecard h3 small { color: var(--muted); font-weight: 400; font-size: .82rem; }
+  .filetabs { display: flex; gap: .4rem; }
+  .filetabs button {
+    font-size: .82rem; padding: .45rem 1rem; border-radius: 8px 8px 0 0; cursor: pointer;
+    background: transparent; color: var(--muted); border: 1px solid var(--border); border-bottom: none;
+    font-family: ui-monospace, monospace;
+  }
+  .filetabs button.active { background: #0a0d12; color: #4fd6bb; }
+  pre.codebox {
+    background: #0a0d12; border: 1px solid var(--border); border-radius: 0 10px 10px 10px;
+    padding: 1.1rem 1.3rem; overflow-x: auto; font-size: .85rem; line-height: 1.75;
+    font-family: ui-monospace, monospace; color: #c9d1e9; white-space: pre;
+  }
+
+  /* ---------- release checklist ---------- */
+  .checklist h3 { font-size: 1.05rem; margin-bottom: .5rem; }
+  .checklist .cl-sub { color: var(--muted); font-size: .9rem; margin-bottom: .9rem; }
+  .check {
+    display: flex; gap: .7rem; align-items: center; padding: .5rem .6rem; border-radius: 8px;
+    font-size: 1rem; color: var(--muted);
+  }
+  .check.todo { cursor: pointer; }
+  .check.todo:hover { background: var(--card2); }
+  .check .box {
+    width: 22px; height: 22px; flex: 0 0 auto; border-radius: 6px; border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: .85rem;
+  }
+  .check.done { color: var(--text); }
+  .check.done .box { background: rgba(52,201,142,.15); border-color: var(--ok); color: var(--ok); }
+  .check small { color: var(--muted); margin-left: auto; font-size: .8rem; text-align: right; }
+
+  /* ---------- flash sale (load) ---------- */
+  .salehead { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+  .salebadge { font-size: .75rem; letter-spacing: .2em; color: var(--warn); font-weight: 700; }
+  .salename { font-size: 1.6rem; margin: .2rem 0; }
+  .salesub { color: var(--muted); font-size: .92rem; }
+  .stockbox {
+    margin-left: auto; text-align: center; padding: .8rem 1.4rem; border-radius: 12px;
+    background: var(--card2); border: 1px solid var(--border);
+  }
+  .stocknum { font-size: 2.2rem; font-weight: 700; font-family: ui-monospace, monospace; }
+  .stocklbl { color: var(--muted); font-size: .8rem; }
+  .salebtns { display: flex; gap: .8rem; flex-wrap: wrap; }
+  .salebtns button {
+    flex: 1; min-width: 260px; padding: .95rem; font-size: 1.1rem; font-weight: 700;
+    border-radius: 12px; cursor: pointer; border: none;
+  }
+  #buyOneBtn { background: var(--accent); color: white; }
+  #gatesBtn { background: transparent; color: var(--warn); border: 1px solid var(--warn); }
+  .salebtns button:disabled { opacity: .45; cursor: default; }
+  .baseline { min-height: 1.6rem; margin-top: .8rem; color: var(--muted); font-size: .98rem; }
+  .baseline b { color: var(--ok); }
+  .stattiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .8rem; margin: 1.2rem 0 1rem; }
+  .tile { background: var(--card2); border: 1px solid var(--border); border-radius: 12px; padding: .8rem 1rem; text-align: center; }
+  .tnum { font-size: 1.7rem; font-weight: 700; font-family: ui-monospace, monospace; }
+  .tlbl { color: var(--muted); font-size: .8rem; margin-top: .15rem; }
+  .legend { display: flex; gap: 1.1rem; flex-wrap: wrap; color: var(--muted); font-size: .85rem; margin-bottom: .8rem; }
+  .legend .fan { display: inline-block; vertical-align: -2px; margin-right: .35rem; }
+  .fan { width: 14px; height: 14px; border-radius: 50%; position: relative; }
+  .fan.f-queued { background: transparent; border: 1.5px solid #3a4557; }
+  .fan.f-buying { background: #a87c0e; animation: pulse .8s infinite; }
+  .fan.f-ticket { background: #1f9d68; }
+  .fan.f-soldout { background: #6478f0; }
+  .fan.f-gaveup { background: #ef5b6a; }
+  .fan.f-gaveup::after {
+    content: "×"; position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; color: white; font-size: 11px; line-height: 1;
+  }
+  .fangrid { display: grid; grid-template-columns: repeat(auto-fill, 14px); gap: 3px; }
+  .simhint { color: var(--muted); font-size: .92rem; margin-top: 1rem; font-style: italic; }
+  .simhint.verdict { color: var(--text); font-style: normal; font-size: 1rem; }
+  .simhint b { color: var(--warn); }
+  .minicalc {
+    margin-top: 1.3rem; padding: 1rem 1.2rem; border-radius: 12px;
+    background: var(--card2); border: 1px solid var(--border);
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  }
+  .minicalc .mc-lbl { color: var(--muted); font-size: .92rem; }
+  .minicalc button {
+    padding: .55rem 1.1rem; font-size: 1rem; border-radius: 10px; cursor: pointer;
+    background: var(--card); color: var(--text); border: 1px solid var(--border);
+  }
+  .minicalc button:hover { border-color: var(--accent); }
+  .minicalc .mc-out { font-family: ui-monospace, monospace; font-size: 1.15rem; min-width: 12rem; }
+  .minicalc .mc-out.stuck { color: var(--warn); }
+
+  footer { text-align: center; color: var(--muted); font-size: .85rem; margin-top: 2rem; }
+  #toast {
+    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+    background: var(--card2); border: 1px solid var(--accent); color: var(--text);
+    padding: .8rem 1.5rem; border-radius: 10px; font-size: .95rem; display: none;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="title">
+      <div class="eyebrow">A LIVE DEMONSTRATION</div>
+      <h1>Why We Write Tests</h1>
+      <p class="sub">Six small apps. Six real bugs. Each one preventable by a check nobody ran.</p>
+    </div>
+    <div class="spacer"></div>
+    <button id="resetBtn">Reset demo data</button>
+  </header>
+
+  <nav>
+    <button data-tab="calc" class="active"><span class="num">01</span>Calculator</button>
+    <button data-tab="seats"><span class="num">02</span>Seat Booking</button>
+    <button data-tab="login"><span class="num">03</span>Login</button>
+    <button data-tab="shop"><span class="num">04</span>Checkout</button>
+    <button data-tab="pizza"><span class="num">05</span>Pizza Shop v2</button>
+    <button data-tab="sale"><span class="num">06</span>Flash Sale</button>
+  </nav>
+
+  <!-- ================= 1. CALCULATOR ================= -->
+  <section class="tab show" id="tab-calc">
+    <div class="card">
+      <div class="calc">
+        <input type="number" id="calcA" value="10">
+        <div class="ops">
+          <button data-op="add">+</button>
+          <button data-op="subtract">−</button>
+          <button data-op="multiply">×</button>
+          <button data-op="divide">÷</button>
+        </div>
+        <input type="number" id="calcB" value="4">
+        <div class="eq">=</div>
+        <div class="screen" id="calcOut">?</div>
+      </div>
+    </div>
+    <div class="card howto">
+      <h3>Demo walkthrough</h3>
+      <ol>
+        <li>Ask the audience: <b>"It's a calculator — does it really need tests?"</b></li>
+        <li>Try <b>10 + 4</b>, <b>10 × 4</b>, <b>10 ÷ 4</b> — all correct.</li>
+        <li>Now try <b>10 − 4</b>. Let them guess what went wrong.</li>
+        <li>The test file is empty: <code>uv run pytest tests/unit/test_calculator.py</code> → <b>no tests ran</b>.</li>
+      </ol>
+      <div class="badges">
+        <span class="badge bad">unit tests: none</span>
+        <span class="badge bad">integration tests: none</span>
+        <span class="badge">lesson: even trivial code needs a test</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 2. SEAT BOOKING ================= -->
+  <section class="tab" id="tab-seats">
+    <div class="card">
+      <div class="phones">
+        <div class="phone" id="phone-alice">
+          <div class="who"><span class="avatar">A</span> User 1 — Alice <button class="refresh">Refresh</button></div>
+          <div class="screen-label">SCREEN</div>
+          <div class="grid"></div>
+          <div class="status">Select a seat.</div>
+          <button class="ticketBtn">View ticket</button>
+          <div class="ticket"></div>
+        </div>
+        <div class="phone" id="phone-bob">
+          <div class="who"><span class="avatar">B</span> User 2 — Bob <button class="refresh">Refresh</button></div>
+          <div class="screen-label">SCREEN</div>
+          <div class="grid"></div>
+          <div class="status">Select a seat.</div>
+          <button class="ticketBtn">View ticket</button>
+          <div class="ticket"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card howto">
+      <h3>Demo walkthrough — the race window is 2–4 seconds</h3>
+      <ol>
+        <li>Alice and Bob are two users on two different devices.</li>
+        <li>Click the <b>same seat on both panels within ~2 seconds</b> of each other.
+            Payment takes a random 2–4 s, so both requests land inside the window.</li>
+        <li>Both bookings succeed — the server just <b>sold one seat twice</b>.</li>
+        <li>Click <b>View ticket</b> on both panels. One validation fails —
+            someone's movie night is ruined.</li>
+        <li>All unit tests pass: <code>uv run pytest tests/unit/test_booking.py</code> —
+            they book seats one at a time. Concurrent users don't.</li>
+      </ol>
+      <div class="badges">
+        <span class="badge ok">unit tests: all pass</span>
+        <span class="badge bad">integration tests: commented out — fail when enabled</span>
+        <span class="badge">lesson: race conditions only appear under concurrency</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 3. LOGIN ================= -->
+  <section class="tab" id="tab-login">
+    <div class="card">
+      <div class="loginbox">
+        <input id="username" placeholder="Username" autocomplete="off">
+        <input id="password" placeholder="Password" type="password">
+        <div class="btns">
+          <button id="signupBtn">Sign up</button>
+          <button id="loginBtn">Log in</button>
+        </div>
+        <div id="loginOut"></div>
+      </div>
+    </div>
+    <div class="card howto">
+      <h3>Demo walkthrough</h3>
+      <ol>
+        <li>Sign up as <b>alice / 1234</b> — works. Log in — works.</li>
+        <li>A second user also wants the username <b>alice</b>. Click Sign up again.</li>
+        <li><b>500 Internal Server Error</b> — the whole request crashed.</li>
+        <li>All unit tests pass: <code>uv run pytest tests/unit/test_users.py</code> —
+            they never register the same username twice. The UNIQUE constraint lives in
+            the database, and only fires against the real database.</li>
+      </ol>
+      <div class="badges">
+        <span class="badge ok">unit tests: all pass</span>
+        <span class="badge bad">integration tests: commented out — fail when enabled</span>
+        <span class="badge">lesson: database constraints need integration tests</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 4. CHECKOUT ================= -->
+  <section class="tab" id="tab-shop">
+    <div class="card">
+      <div class="shop">
+        <div class="productlist" id="productList"></div>
+        <div class="summary">
+          <div class="discount">
+            <input id="codeInput" placeholder="Discount code" value="STUDENT10">
+            <button id="applyBtn">Apply</button>
+          </div>
+          <div id="summaryRows"></div>
+          <button id="payBtn">Pay ₹0</button>
+          <div id="receipt"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card howto">
+      <h3>Demo walkthrough</h3>
+      <ol>
+        <li>Add a few items. Apply code <b>STUDENT10</b> — the total drops 10%.</li>
+        <li>The Pay button shows the discounted amount. Click it.</li>
+        <li>The receipt shows <b>full price</b>: the UI displayed one number and charged another.</li>
+        <li>Every backend test passes — unit: <code>uv run pytest tests/unit/test_checkout.py</code>,
+            and the integration tests in <code>tests/integration/test_checkout.py</code>
+            <b>also pass</b> once uncommented.</li>
+        <li>The backend is correct. The defect is in the frontend — only a
+            <b>manual run of the real flow</b> reveals it.</li>
+      </ol>
+      <div class="badges">
+        <span class="badge ok">unit tests: all pass</span>
+        <span class="badge ok">integration tests: pass once enabled</span>
+        <span class="badge bad">manual test run: never done</span>
+        <span class="badge">lesson: green suites don't cover code that isn't there</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 5. PIZZA SHOP V2 (regression) ================= -->
+  <section class="tab" id="tab-pizza">
+    <div class="card">
+      <div class="shipbar">
+        <span class="verchip" id="verChip">v1 — plain pricing, live for months</span>
+        <span class="combo-banner" id="comboBanner">NEW: 🍕 Pizza + 🧃 Juice = ₹199 Lunch Combo</span>
+        <span class="spacer"></span>
+        <button id="shipBtn">🚀 Ship v2 — Lunch Combo</button>
+      </div>
+      <div class="shop">
+        <div class="productlist" id="pizzaList"></div>
+        <div class="summary">
+          <div id="pizzaRows"></div>
+          <button id="chargeBtn" class="bigpay">Charge ₹0</button>
+          <div id="pizzaReceipt" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card codecard">
+      <h3>The pricing function — pulled live from the server
+        <small>(this exact code is answering the register above)</small></h3>
+      <div class="filetabs">
+        <button id="codeV1Btn">cart_total_v1()</button>
+        <button id="codeV2Btn">cart_total_v2()</button>
+      </div>
+      <pre class="codebox" id="pizzaCode"></pre>
+    </div>
+
+    <div class="card checklist" id="regCard" style="display:none">
+      <h3>Release checklist — v2 “Lunch Combo”</h3>
+      <div class="cl-sub">What got tested before v2 went live. Click a box as you re-test that flow for real:</div>
+      <div class="check done"><span class="box">✓</span> NEW — pizza + juice rings up as a ₹199 combo</div>
+      <div class="check todo"><span class="box"></span> single-item carts <small>worked in v1 — never re-tested</small></div>
+      <div class="check todo"><span class="box"></span> carts with no combo in them <small>worked in v1 — never re-tested</small></div>
+      <div class="check todo"><span class="box"></span> leftover pizzas / juices beyond the combo <small>worked in v1 — never re-tested</small></div>
+    </div>
+
+    <div class="card howto">
+      <h3>Demo walkthrough</h3>
+      <ol>
+        <li>On <b>v1</b>: a Juice — ₹90. A Pizza + Juice — ₹240. This shop has worked for months.</li>
+        <li>The product team wants a combo deal. Click <b>🚀 Ship v2</b>.</li>
+        <li>Test the new feature: Pizza + Juice → <b>₹199</b>. It works! Everyone claps. v2 stays live.</li>
+        <li>Now re-test something old. A Juice <b>alone</b>: <b>₹0</b>. Two Pizzas + one Juice: ₹199 — a whole pizza, free.
+            (The bug is on screen — read <code>cart_total_v2()</code> above and let the audience find it.)</li>
+        <li>Nobody will ever report this one: <b>customers don't complain about being undercharged</b>.
+            The shop just quietly loses money, order after order.</li>
+        <li>All unit tests pass: <code>uv run pytest tests/unit/test_pizzashop.py</code> —
+            v1's flows were tested on v1, the combo was tested on v2. Nobody re-tested the
+            <b>old flows on the new code</b>. That re-test has a name: a regression pass.</li>
+      </ol>
+      <div class="badges">
+        <span class="badge ok">unit tests: all pass</span>
+        <span class="badge bad">regression pass: skipped</span>
+        <span class="badge">lesson: when shared code changes, re-test what already worked</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 6. FLASH SALE (load) ================= -->
+  <section class="tab" id="tab-sale">
+    <div class="card">
+      <div class="salehead">
+        <div>
+          <div class="salebadge">⚡ TICKET DROP</div>
+          <h3 class="salename">Arijit Singh — Live in Pune</h3>
+          <div class="salesub">tickets released at a fixed time · every fan shows up at once</div>
+        </div>
+        <div class="stockbox">
+          <div class="stocknum" id="stockNum">–</div>
+          <div class="stocklbl">tickets left</div>
+        </div>
+      </div>
+      <div class="salebtns">
+        <button id="buyOneBtn">🎟 Buy one ticket — just you</button>
+        <button id="gatesBtn">🌊 Open the gates — 200 fans at once</button>
+      </div>
+      <div class="baseline" id="buyOneOut"></div>
+
+      <div id="simPanel" style="display:none">
+        <div class="stattiles">
+          <div class="tile"><div class="tnum" id="stSold">0</div><div class="tlbl">got a ticket</div></div>
+          <div class="tile"><div class="tnum" id="stSoldout">0</div><div class="tlbl">told “sold out”</div></div>
+          <div class="tile"><div class="tnum" id="stGaveup">0</div><div class="tlbl">gave up waiting</div></div>
+          <div class="tile"><div class="tnum" id="stMedian">–</div><div class="tlbl">median wait</div></div>
+          <div class="tile"><div class="tnum" id="stSlow">–</div><div class="tlbl">slowest wait</div></div>
+        </div>
+        <div class="legend">
+          <span><i class="fan f-queued"></i>queued</span>
+          <span><i class="fan f-buying"></i>buying…</span>
+          <span><i class="fan f-ticket"></i>got a ticket</span>
+          <span><i class="fan f-soldout"></i>told “sold out”</span>
+          <span><i class="fan f-gaveup"></i>gave up</span>
+        </div>
+        <div class="fangrid" id="fanGrid"></div>
+        <div class="simhint" id="simHint"></div>
+      </div>
+
+      <div class="minicalc">
+        <span class="mc-lbl">Meanwhile, the rest of your site — this really calls <code>/api/calc</code>:</span>
+        <button id="mcBtn">2 + 2 =</button>
+        <span class="mc-out" id="mcOut">?</span>
+      </div>
+    </div>
+
+    <div class="card howto">
+      <h3>Demo walkthrough</h3>
+      <ol>
+        <li>Click <b>Buy one ticket</b> — about 2 seconds. Works every time, and every functional test agrees.</li>
+        <li>Now click <b>Open the gates</b>: 200 fans hit the same 120-ticket drop at once.</li>
+        <li>Watch the waits climb wave after wave — the server has ~40 worker threads and each
+            purchase holds one for the whole payment delay. Fan #1 waits 2 seconds; fan #200 waits 13.</li>
+        <li><b>While it runs</b>: hit the <b>“2 + 2 =”</b> button below the grid — it really calls
+            the calculator's API, and it really hangs. The whole site is stuck in the same queue.</li>
+        <li>All tests pass: <code>uv run pytest tests/unit/test_flashsale.py</code> — every one of them
+            asks “does buying work?”, none of them asks <b>“for how many people at once?”</b></li>
+        <li>That question is a <b>load test</b> (Locust, k6, JMeter) — and it runs
+            <b>before</b> launch day, not during it.</li>
+      </ol>
+      <div class="badges">
+        <span class="badge ok">functional tests: all pass</span>
+        <span class="badge bad">load test: never ran</span>
+        <span class="badge">lesson: one user working ≠ 200 users working</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>Why We Write Tests · port 1184 · every bug in this demo shipped because a check was never run</footer>
+</div>
+<div id="toast"></div>
+
+<script>
+const api = (path, body) => fetch(path, body ? {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+} : undefined);
+
+function toast(text) {
+  const t = document.getElementById("toast");
+  t.textContent = text;
+  t.style.display = "block";
+  setTimeout(() => t.style.display = "none", 2500);
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll("nav button").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll("section.tab").forEach(s => s.classList.remove("show"));
+    btn.classList.add("active");
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("show");
+  };
+});
+
+/* ---------- 1. calculator ---------- */
+document.querySelectorAll(".ops button").forEach(btn => {
+  btn.onclick = async () => {
+    document.querySelectorAll(".ops button").forEach(b => b.classList.remove("picked"));
+    btn.classList.add("picked");
+    const a = Number(document.getElementById("calcA").value);
+    const b = Number(document.getElementById("calcB").value);
+    const res = await api("/api/calc", { a, b, op: btn.dataset.op });
+    const { result } = await res.json();
+    document.getElementById("calcOut").textContent = result === null ? "—" : +result.toFixed(4);
+  };
+});
+
+/* ---------- 2. seat booking ---------- */
+const panels = {
+  alice: { el: document.getElementById("phone-alice"), user: "alice", mySeat: null },
+  bob: { el: document.getElementById("phone-bob"), user: "bob", mySeat: null },
+};
+
+async function loadSeats(panel) {
+  const seats = await (await api("/api/seats")).json();
+  const grid = panel.el.querySelector(".grid");
+  grid.innerHTML = "";
+  seats.forEach(seat => {
+    const div = document.createElement("div");
+    div.className = "seat";
+    div.textContent = seat.id;
+    if (seat.booked_by === panel.user) div.classList.add("mine");
+    else if (seat.booked_by) div.classList.add("taken");
+    else div.onclick = () => bookSeat(panel, seat.id, div);
+    grid.appendChild(div);
+  });
+}
+
+async function bookSeat(panel, seatId, div) {
+  div.classList.add("pending");
+  setStatus(panel, "Processing payment… (takes 2–4 s)", "");
+  const result = await (await api("/api/book", { seat: seatId, user: panel.user })).json();
+  if (result.ok) {
+    panel.mySeat = seatId;
+    setStatus(panel, `Seat ${seatId} confirmed.`, "good");
+    panel.el.querySelector(".ticketBtn").style.display = "block";
+  } else {
+    setStatus(panel, result.error, "bad");
+  }
+  loadSeats(panel);
+}
+
+function setStatus(panel, text, cls) {
+  const status = panel.el.querySelector(".status");
+  status.textContent = text;
+  status.className = "status " + cls;
+}
+
+function fakeQR(seed) {
+  let hash = 0;
+  for (const ch of seed) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff;
+  let cells = "";
+  for (let i = 0; i < 81; i++) {
+    hash = (hash * 1103515245 + 12345) & 0x7fffffff;
+    cells += `<i class="${hash % 3 ? "on" : ""}"></i>`;
+  }
+  return `<div class="qr">${cells}</div>`;
+}
+
+Object.values(panels).forEach(panel => {
+  panel.el.querySelector(".refresh").onclick = () => loadSeats(panel);
+  panel.el.querySelector(".ticketBtn").onclick = async () => {
+    const result = await (await fetch(`/api/ticket?seat=${panel.mySeat}&user=${panel.user}`)).json();
+    const box = panel.el.querySelector(".ticket");
+    if (result.ok) {
+      box.className = "ticket";
+      box.innerHTML = `<div class="trow">${fakeQR(result.seat + result.user)}
+        <div><b>ADMIT ONE</b><br>Seat ${result.seat}<br>${result.user}</div></div>`;
+    } else {
+      box.className = "ticket fail";
+      box.textContent = "Ticket validation failed: " + result.error;
+    }
+    box.style.display = "block";
+  };
+});
+
+/* ---------- 3. login ---------- */
+async function auth(path) {
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+  const out = document.getElementById("loginOut");
+  const res = await api(path, { username, password });
+  if (!res.ok) {
+    out.innerHTML = `<div class="msg bad crash">💥 ${res.status} — Internal Server Error
+      <small>The request crashed on the server. This is exactly what a real user would see.
+      The traceback is in the server terminal.</small></div>`;
+    return;
+  }
+  const data = await res.json();
+  out.innerHTML = data.ok
+    ? `<div class="msg good">Welcome, ${data.user}.</div>`
+    : `<div class="msg bad">${data.error}</div>`;
+}
+document.getElementById("signupBtn").onclick = () => auth("/api/signup");
+document.getElementById("loginBtn").onclick = () => auth("/api/login");
+
+/* ---------- 4. checkout ---------- */
+let products = [];
+const cart = {};
+let discounted = null;  // total after a successfully applied code
+
+async function loadShop() {
+  products = await (await api("/api/products")).json();
+  const list = document.getElementById("productList");
+  list.innerHTML = "";
+  products.forEach(p => {
+    cart[p.id] = cart[p.id] || 0;
+    const row = document.createElement("div");
+    row.className = "product";
+    row.innerHTML = `<span>${p.name}</span><span class="price">₹${p.price}</span>
+      <span class="step"><button>−</button><span class="qty">${cart[p.id]}</span><button>+</button></span>`;
+    const [minus, plus] = row.querySelectorAll("button");
+    minus.onclick = () => { cart[p.id] = Math.max(0, cart[p.id] - 1); refreshShop(); };
+    plus.onclick = () => { cart[p.id]++; refreshShop(); };
+    list.appendChild(row);
+  });
+  refreshShop();
+}
+
+function subtotal() {
+  return products.reduce((sum, p) => sum + p.price * cart[p.id], 0);
+}
+
+function refreshShop() {
+  document.querySelectorAll(".product").forEach((row, i) => {
+    row.querySelector(".qty").textContent = cart[products[i].id];
+  });
+  const total = discounted ?? subtotal();
+  const rows = document.getElementById("summaryRows");
+  rows.innerHTML = `<div class="row"><span>Subtotal</span><span>₹${subtotal()}</span></div>` +
+    (discounted !== null
+      ? `<div class="row"><span>Discount</span><span>−₹${subtotal() - discounted}</span></div>`
+      : "") +
+    `<div class="row total"><span>Total</span>
+       <span>${discounted !== null ? `<span class="old">₹${subtotal()}</span>` : ""}₹${total}</span></div>`;
+  document.getElementById("payBtn").textContent = `Pay ₹${total}`;
+  document.getElementById("receipt").style.display = "none";
+}
+
+document.getElementById("applyBtn").onclick = async () => {
+  const code = document.getElementById("codeInput").value.toUpperCase();
+  const res = await (await api("/api/preview", { items: cart, code })).json();
+  if (res.after_discount < res.total) {
+    discounted = res.after_discount;
+    toast(`Code ${code} applied.`);
+  } else {
+    discounted = null;
+    toast("Code not recognized.");
+  }
+  refreshShop();
+};
+
+document.getElementById("payBtn").onclick = async () => {
+  const agreed = discounted ?? subtotal();
+  if (agreed === 0) { toast("Cart is empty."); return; }
+  const order = await (await api("/api/pay", { items: cart })).json();
+  const receipt = document.getElementById("receipt");
+  receipt.innerHTML = `<div class="receipt-card">
+      <div>Payment complete — order #${order.id}</div>
+      <div class="charged">Charged: ₹${order.charged}</div>
+      ${order.charged !== agreed
+        ? `<div class="uhoh">Wait — the button said ₹${agreed}. The customer just paid
+           ₹${order.charged - agreed} more than they agreed to.</div>`
+        : ""}
+    </div>`;
+  receipt.style.display = "block";
+};
+
+/* ---------- 5. pizza shop v2 ---------- */
+let pizzaProducts = [];
+const pizzaCart = {};
+let pizzaVersion = 1;
+let pizzaCode = { v1: "", v2: "" };
+let codeTab = "v1";
+
+async function loadPizza() {
+  const state = await (await api("/api/pizzashop/state")).json();
+  pizzaProducts = state.products;
+  pizzaVersion = state.version;
+  pizzaCode = await (await api("/api/pizzashop/code")).json();
+  const list = document.getElementById("pizzaList");
+  list.innerHTML = "";
+  pizzaProducts.forEach(p => {
+    pizzaCart[p.id] = pizzaCart[p.id] || 0;
+    const row = document.createElement("div");
+    row.className = "product";
+    row.innerHTML = `<span>${p.name}</span><span class="price">₹${p.price}</span>
+      <span class="step"><button>−</button><span class="qty">${pizzaCart[p.id]}</span><button>+</button></span>`;
+    const [minus, plus] = row.querySelectorAll("button");
+    minus.onclick = () => { pizzaCart[p.id] = Math.max(0, pizzaCart[p.id] - 1); refreshPizza(); };
+    plus.onclick = () => { pizzaCart[p.id]++; refreshPizza(); };
+    list.appendChild(row);
+  });
+  renderVersion();
+  renderPizzaCode();
+  refreshPizza();
+}
+
+function pizzaSubtotal() {
+  return pizzaProducts.reduce((sum, p) => sum + p.price * pizzaCart[p.id], 0);
+}
+
+async function refreshPizza() {
+  document.querySelectorAll("#pizzaList .product").forEach((row, i) => {
+    row.querySelector(".qty").textContent = pizzaCart[pizzaProducts[i].id];
+  });
+  const menu = pizzaSubtotal();
+  const { total } = await (await api("/api/pizzashop/preview", { items: pizzaCart })).json();
+  const rows = document.getElementById("pizzaRows");
+  rows.innerHTML = `<div class="row"><span>Menu price</span><span>₹${menu}</span></div>` +
+    (total < menu
+      ? `<div class="row"><span>Combo savings</span><span>−₹${menu - total}</span></div>`
+      : "") +
+    `<div class="row total"><span>Register total</span><span>₹${total}</span></div>`;
+  document.getElementById("chargeBtn").textContent = `Charge ₹${total}`;
+  document.getElementById("pizzaReceipt").style.display = "none";
+}
+
+function renderVersion() {
+  const chip = document.getElementById("verChip");
+  const banner = document.getElementById("comboBanner");
+  const btn = document.getElementById("shipBtn");
+  const card = document.getElementById("regCard");
+  const v2 = pizzaVersion === 2;
+  chip.textContent = v2 ? "v2 — Lunch Combo update" : "v1 — plain pricing, live for months";
+  chip.classList.toggle("v2", v2);
+  banner.style.display = v2 ? "inline-block" : "none";
+  btn.textContent = v2 ? "⏪ Roll back to v1" : "🚀 Ship v2 — Lunch Combo";
+  btn.classList.toggle("rollback", v2);
+  card.style.display = v2 ? "block" : "none";
+}
+
+document.getElementById("shipBtn").onclick = async () => {
+  const target = pizzaVersion === 2 ? 1 : 2;
+  const res = await (await api("/api/pizzashop/ship", { version: target })).json();
+  pizzaVersion = res.version;
+  codeTab = pizzaVersion === 2 ? "v2" : "v1";
+  toast(pizzaVersion === 2 ? "v2 is live. The combo has shipped. 🚀" : "Rolled back to v1.");
+  renderVersion();
+  renderPizzaCode();
+  refreshPizza();
+};
+
+function renderPizzaCode() {
+  document.getElementById("codeV1Btn").classList.toggle("active", codeTab === "v1");
+  document.getElementById("codeV2Btn").classList.toggle("active", codeTab === "v2");
+  document.getElementById("pizzaCode").textContent = pizzaCode[codeTab] || "";
+}
+document.getElementById("codeV1Btn").onclick = () => { codeTab = "v1"; renderPizzaCode(); };
+document.getElementById("codeV2Btn").onclick = () => { codeTab = "v2"; renderPizzaCode(); };
+
+document.getElementById("chargeBtn").onclick = async () => {
+  if (pizzaSubtotal() === 0) { toast("Cart is empty."); return; }
+  const order = await (await api("/api/pizzashop/pay", { items: pizzaCart })).json();
+  const receipt = document.getElementById("pizzaReceipt");
+  receipt.innerHTML = `<div class="receipt-card" style="margin-top:1rem">
+      <div>Payment complete — order #${order.id} <small>(v${order.version} pricing)</small></div>
+      <div class="charged">Charged: ₹${order.charged}</div>
+    </div>`;
+  receipt.style.display = "block";
+};
+
+document.querySelectorAll("#regCard .check.todo").forEach(item => {
+  item.onclick = () => {
+    item.classList.toggle("done");
+    item.querySelector(".box").textContent = item.classList.contains("done") ? "✓" : "";
+  };
+});
+
+/* ---------- 6. flash sale ---------- */
+let salePoll = null;
+const FAN_LABELS = { queued: "queued", buying: "buying…", ticket: "got a ticket", soldout: "told “sold out”", gaveup: "gave up" };
+
+async function loadSale() {
+  const s = await (await api("/api/flashsale/status")).json();
+  document.getElementById("stockNum").textContent = s.left;
+}
+
+document.getElementById("buyOneBtn").onclick = async () => {
+  const btn = document.getElementById("buyOneBtn");
+  const out = document.getElementById("buyOneOut");
+  btn.disabled = true;
+  out.textContent = "Processing payment…";
+  const t0 = performance.now();
+  const result = await (await api("/api/flashsale/buy", { user: "you" })).json();
+  const secs = ((performance.now() - t0) / 1000).toFixed(1);
+  out.innerHTML = result.ok
+    ? `🎟 You got a ticket in <b>${secs}s</b>. Feels fine, right? Now imagine you weren't alone.`
+    : `Sold out — and it still took ${secs}s to find out.`;
+  btn.disabled = false;
+  loadSale();
+};
+
+document.getElementById("gatesBtn").onclick = async () => {
+  const res = await (await api("/api/flashsale/simulate", {})).json();
+  if (!res.ok) { toast(res.error); return; }
+  document.getElementById("simPanel").style.display = "block";
+  document.getElementById("gatesBtn").disabled = true;
+  const hint = document.getElementById("simHint");
+  hint.className = "simhint";
+  hint.textContent = "psst — while this runs, hit “2 + 2 =” below, or switch to the Calculator tab.";
+  const grid = document.getElementById("fanGrid");
+  grid.innerHTML = "";
+  for (let i = 0; i < res.fans; i++) {
+    const dot = document.createElement("div");
+    dot.className = "fan f-queued";
+    dot.title = `fan #${i + 1} — queued`;
+    grid.appendChild(dot);
+  }
+  salePoll = setInterval(pollSale, 400);
+};
+
+async function pollSale() {
+  const sim = await (await api("/api/flashsale/results")).json();
+  const dots = document.getElementById("fanGrid").children;
+  sim.fans.forEach((fan, i) => {
+    if (!dots[i]) return;
+    dots[i].className = "fan f-" + fan.status;
+    dots[i].title = `fan #${fan.id + 1} — ${FAN_LABELS[fan.status]}` +
+      (fan.ms ? ` after ${(fan.ms / 1000).toFixed(1)}s` : "");
+  });
+  const count = st => sim.fans.filter(f => f.status === st).length;
+  const done = sim.fans.filter(f => f.ms !== null).map(f => f.ms).sort((a, b) => a - b);
+  document.getElementById("stSold").textContent = count("ticket");
+  document.getElementById("stSoldout").textContent = count("soldout");
+  document.getElementById("stGaveup").textContent = count("gaveup");
+  document.getElementById("stMedian").textContent = done.length ? (done[Math.floor(done.length / 2)] / 1000).toFixed(1) + "s" : "–";
+  document.getElementById("stSlow").textContent = done.length ? (done[done.length - 1] / 1000).toFixed(1) + "s" : "–";
+  loadSale();
+  if (!sim.running && sim.fans.length) {
+    clearInterval(salePoll);
+    salePoll = null;
+    document.getElementById("gatesBtn").disabled = false;
+    const hint = document.getElementById("simHint");
+    hint.className = "simhint verdict";
+    hint.innerHTML = `The first fan was done in <b>${(done[0] / 1000).toFixed(1)}s</b> —
+      the slowest waited <b>${(done[done.length - 1] / 1000).toFixed(1)}s</b> just to hear an answer.
+      Every functional test passed. Finding this before launch day is what a load test is for.`;
+  }
+}
+
+document.getElementById("mcBtn").onclick = async () => {
+  const out = document.getElementById("mcOut");
+  out.textContent = "… waiting for a free worker …";
+  out.className = "mc-out stuck";
+  const t0 = performance.now();
+  const { result } = await (await api("/api/calc", { a: 2, b: 2, op: "add" })).json();
+  const secs = (performance.now() - t0) / 1000;
+  const slow = secs >= 0.5;
+  out.textContent = slow ? `${result} — after ${secs.toFixed(1)}s 💀` : `${result}  (instant)`;
+  out.className = "mc-out" + (slow ? " stuck" : "");
+};
+
+/* ---------- reset ---------- */
+document.getElementById("resetBtn").onclick = async () => {
+  await api("/api/reset", {});
+  Object.values(panels).forEach(panel => {
+    panel.mySeat = null;
+    panel.el.querySelector(".ticketBtn").style.display = "none";
+    panel.el.querySelector(".ticket").style.display = "none";
+    setStatus(panel, "Select a seat.", "");
+    loadSeats(panel);
+  });
+  document.getElementById("loginOut").innerHTML = "";
+  document.getElementById("calcOut").textContent = "?";
+  document.querySelectorAll(".ops button").forEach(b => b.classList.remove("picked"));
+  Object.keys(cart).forEach(key => cart[key] = 0);
+  discounted = null;
+  refreshShop();
+  Object.keys(pizzaCart).forEach(key => pizzaCart[key] = 0);
+  loadPizza();
+  if (salePoll) { clearInterval(salePoll); salePoll = null; }
+  document.getElementById("simPanel").style.display = "none";
+  document.getElementById("gatesBtn").disabled = false;
+  document.getElementById("buyOneOut").textContent = "";
+  document.getElementById("mcOut").textContent = "?";
+  document.getElementById("mcOut").className = "mc-out";
+  loadSale();
+  toast("Demo data reset.");
+};
+
+/* ---------- boot ---------- */
+loadSeats(panels.alice);
+loadSeats(panels.bob);
+loadShop();
+loadPizza();
+loadSale();
+</script>
+</body>
+</html>

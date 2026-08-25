@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why We Write Tests</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --card: #151a23;
+    --card2: #1c2330;
+    --border: #2a3345;
+    --text: #e8edf6;
+    --muted: #8b98af;
+    --accent: #6478f0;
+    --teal: #4fd6bb;
+    --ok: #34c98e;
+    --danger: #ef5b6a;
+    --warn: #dfa514;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 19px; scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    background-image: radial-gradient(ellipse 70% 45% at 50% -10%, rgba(100,120,240,.16), transparent);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 1140px; margin: 0 auto; padding: 0 1.5rem; }
+
+  /* ---------- sticky nav ---------- */
+  .nav {
+    position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px);
+    background: rgba(14,17,22,.85); border-bottom: 1px solid var(--border);
+  }
+  .nav .wrap { display: flex; gap: .4rem; align-items: center; padding: .7rem 1.5rem; overflow-x: auto; }
+  .nav .brand { font-weight: 700; margin-right: .8rem; white-space: nowrap; font-size: .95rem; }
+  .nav a {
+    color: var(--muted); text-decoration: none; font-size: .82rem; white-space: nowrap;
+    padding: .35rem .9rem; border-radius: 8px;
+  }
+  .nav a:hover { color: var(--text); background: var(--card2); }
+  .nav a .n { color: var(--accent); font-weight: 700; margin-right: .3rem; }
+
+  /* ---------- hero ---------- */
+  .hero { text-align: center; padding: 5rem 0 4rem; }
+  .hero .eyebrow { font-size: .8rem; letter-spacing: .22em; color: var(--accent); font-weight: 700; }
+  .hero h1 {
+    font-size: 3.6rem; line-height: 1.1; margin-top: .6rem;
+    background: linear-gradient(90deg, #8b9bf5, var(--teal));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p.sub { color: var(--muted); font-size: 1.25rem; margin: 1.2rem auto 0; max-width: 680px; line-height: 1.6; }
+  .hero p.sub b { color: var(--text); }
+  .hero .stats { display: flex; gap: .8rem; justify-content: center; margin-top: 2rem; flex-wrap: wrap; }
+  .hero .stats span {
+    padding: .5rem 1.2rem; border-radius: 999px; font-size: .9rem;
+    border: 1px solid var(--border); color: var(--muted); background: var(--card);
+  }
+  .hero .hint { margin-top: 3rem; color: var(--muted); font-size: .95rem; animation: bob 2s infinite; }
+  @keyframes bob { 50% { transform: translateY(6px); } }
+
+  /* ---------- exhibits: single column, story → app → code → takeaway ---------- */
+  .exhibit { padding: 4rem 0; border-top: 1px solid var(--border); }
+  .exhibit.reveal { opacity: 0; transform: translateY(24px); transition: .6s; }
+  .exhibit.reveal.in { opacity: 1; transform: none; }
+  .ex-num {
+    font-size: .8rem; letter-spacing: .2em; color: var(--accent);
+    text-transform: uppercase; font-weight: 700;
+  }
+  .exhibit h2 { font-size: 2.1rem; margin: .4rem 0 .8rem; }
+  .chips { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .chip { font-size: .82rem; padding: .3rem .9rem; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+  .chip.catch { border-color: rgba(79,214,187,.5); color: var(--teal); }
+  .story { color: var(--muted); font-size: 1.12rem; line-height: 1.7; max-width: 860px; margin-bottom: 1.8rem; }
+  .story b { color: var(--text); }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 1.5rem; margin-bottom: 1.2rem;
+  }
+
+  /* ---------- buggy/fixed toggle ---------- */
+  .modebar { display: flex; align-items: center; gap: .8rem; margin-bottom: 1.2rem; }
+  .modebar .lbl { font-size: .95rem; font-weight: 700; color: var(--danger); }
+  .modebar .lbl.on { color: var(--ok); }
+  .modebar .caption { margin: 0 0 0 auto; }
+  .switch { width: 62px; height: 32px; border-radius: 999px; background: rgba(239,91,106,.15); border: 1px solid var(--danger); cursor: pointer; position: relative; transition: .25s; flex: 0 0 auto; }
+  .switch::after {
+    content: "🐛"; position: absolute; top: 2px; left: 3px; width: 26px; height: 26px;
+    border-radius: 50%; background: var(--card2); display: flex; align-items: center;
+    justify-content: center; font-size: .85rem; transition: .25s;
+  }
+  .switch.on { background: rgba(52,201,142,.15); border-color: var(--ok); }
+  .switch.on::after { content: "✅"; left: 31px; }
+  .caption { color: var(--muted); font-size: .92rem; }
+  .caption b { color: var(--text); }
+
+  /* ---------- 1. calculator (same layout as the live demo) ---------- */
+  .calc { display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap; padding: 1.5rem 0; }
+  .calc input {
+    width: 160px; font-size: 2rem; text-align: center; padding: .6rem;
+    background: var(--card2); border: 1px solid var(--border); border-radius: 12px; color: var(--text);
+  }
+  .calc .ops { display: flex; flex-direction: column; gap: .5rem; }
+  .calc .ops button {
+    width: 58px; height: 58px; font-size: 1.6rem; border-radius: 12px; cursor: pointer;
+    background: var(--card2); color: var(--text); border: 1px solid var(--border); transition: .15s;
+  }
+  .calc .ops button:hover { border-color: var(--accent); }
+  .calc .ops button.picked { background: var(--accent); border-color: transparent; color: white; }
+  .calc .eq { font-size: 2.2rem; color: var(--muted); }
+  .calc .screen {
+    min-width: 220px; padding: 1rem 1.5rem; font-size: 2.6rem; text-align: center;
+    background: #0a0d12; border-radius: 12px; color: var(--text);
+    font-family: ui-monospace, monospace; border: 1px solid var(--border);
+  }
+  .calc .screen.wrong { color: var(--danger); animation: shake .4s; }
+  @keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+
+  /* ---------- 2. seats (same phones as the live demo) ---------- */
+  .racebar { display: flex; align-items: center; gap: .9rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+  .phones { display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center; }
+  .phone {
+    width: 380px; background: var(--card2); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.2rem; flex: 0 0 auto;
+  }
+  .phone .who { display: flex; align-items: center; gap: .7rem; font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: white;
+    font-size: .95rem; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  }
+  .screen-label {
+    text-align: center; color: var(--muted); font-size: .7rem; letter-spacing: .35em;
+    padding: .35rem; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1rem;
+  }
+  .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: .45rem; }
+  .seat {
+    aspect-ratio: 1; border-radius: 8px 8px 4px 4px; cursor: pointer; font-size: .78rem;
+    background: var(--card); border: 1px solid var(--border); color: var(--muted);
+    display: flex; align-items: center; justify-content: center; transition: .15s;
+  }
+  .seat:hover { border-color: var(--accent); color: var(--text); }
+  .seat.taken { background: rgba(239,91,106,.12); border-color: var(--danger); color: var(--danger); cursor: not-allowed; }
+  .seat.mine { background: rgba(52,201,142,.12); border-color: var(--ok); color: var(--ok); }
+  .seat.pending { animation: pulse .8s infinite; border-color: var(--warn); color: var(--warn); }
+  @keyframes pulse { 50% { opacity: .4; } }
+  .phone .status { min-height: 2.2rem; margin-top: 1rem; font-size: .95rem; color: var(--muted); }
+  .phone .status.good { color: var(--ok); }
+  .phone .status.bad { color: var(--danger); }
+  .tixBtn {
+    display: none; width: 100%; margin-top: .8rem; padding: .75rem; font-size: 1rem;
+    border-radius: 10px; cursor: pointer; border: none;
+    background: var(--accent); color: white; font-weight: 600;
+  }
+  .tix {
+    margin-top: .8rem; padding: 1rem; border-radius: 10px; display: none; font-size: .95rem;
+    border: 1px dashed var(--ok); background: #10151d;
+  }
+  .tix.fail { border-color: var(--danger); background: rgba(239,91,106,.08); color: var(--danger); }
+  .tix .trow { display: flex; align-items: center; gap: 1rem; }
+  .qr { display: grid; grid-template-columns: repeat(9, 7px); grid-auto-rows: 7px; gap: 1px; }
+  .qr i { background: #10151d; } .qr i.on { background: var(--text); }
+  .bigbtn {
+    padding: .75rem 1.4rem; font-size: 1.02rem; font-weight: 600; border-radius: 10px;
+    cursor: pointer; border: none; color: white; background: var(--accent);
+  }
+  .bigbtn:disabled { opacity: .5; cursor: default; }
+
+  /* ---------- 3. login (same box as the live demo) ---------- */
+  .loginbox { max-width: 460px; margin: 0 auto; padding: 1rem 0; }
+  .loginbox input {
+    width: 100%; font-size: 1.1rem; padding: .8rem 1rem; margin-bottom: .8rem;
+    background: var(--card2); border: 1px solid var(--border); border-radius: 10px; color: var(--text);
+  }
+  .msg { padding: 1rem 1.2rem; border-radius: 10px; font-size: 1.05rem; margin-top: 1rem; }
+  .msg.good { background: rgba(52,201,142,.1); border: 1px solid var(--ok); color: var(--ok); }
+  .msg.bad { background: rgba(239,91,106,.08); border: 1px solid var(--danger); color: var(--danger); }
+  .msg.crash { font-size: 1.15rem; text-align: center; animation: shake .4s; }
+  .msg.crash small { display: block; color: var(--muted); font-size: .85rem; margin-top: .5rem; line-height: 1.6; }
+
+  /* ---------- 4 & 5. shops (same layout as the live demo) ---------- */
+  .shop { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+  .productlist { flex: 1; min-width: 300px; display: grid; gap: .8rem; align-content: start; }
+  .product {
+    display: flex; align-items: center; gap: 1rem; padding: 1rem 1.2rem;
+    background: var(--card2); border: 1px solid var(--border); border-radius: 12px; font-size: 1.05rem;
+  }
+  .product .price { margin-left: auto; color: var(--muted); }
+  .product .step { display: flex; align-items: center; gap: .7rem; }
+  .product .step button {
+    width: 36px; height: 36px; font-size: 1.2rem; border-radius: 8px; cursor: pointer;
+    background: var(--card); color: var(--text); border: 1px solid var(--border);
+  }
+  .product .qty { min-width: 1.4rem; text-align: center; font-weight: 600; }
+  .summary { width: 380px; flex: 0 0 auto; }
+  .summary .row { display: flex; justify-content: space-between; padding: .4rem 0; font-size: 1.02rem; color: var(--muted); }
+  .summary .row.total { font-size: 1.4rem; color: var(--text); font-weight: 700; border-top: 1px solid var(--border); margin-top: .6rem; padding-top: .8rem; }
+  .summary .row .old { text-decoration: line-through; color: var(--muted); font-size: 1rem; margin-right: .6rem; font-weight: 400; }
+  .discount { display: flex; gap: .6rem; margin: 0 0 1rem; }
+  .discount input {
+    flex: 1; font-size: .95rem; padding: .7rem 1rem; text-transform: uppercase;
+    background: var(--card2); border: 1px solid var(--border); border-radius: 10px; color: var(--text);
+    font-family: ui-monospace, monospace;
+  }
+  .discount button {
+    padding: .7rem 1.2rem; font-size: .95rem; border-radius: 10px; cursor: pointer;
+    background: transparent; color: var(--accent); border: 1px solid var(--accent);
+  }
+  .bigpay {
+    width: 100%; padding: .95rem; font-size: 1.15rem; font-weight: 700; border-radius: 12px;
+    cursor: pointer; border: none; margin-top: .5rem; background: var(--accent); color: white;
+  }
+  .receipt-card {
+    margin-top: 1rem; padding: 1.2rem; border-radius: 12px; border: 1px dashed var(--ok);
+    background: #10151d; font-size: .98rem; display: none;
+  }
+  .receipt-card .charged { font-size: 1.8rem; font-weight: 700; color: var(--ok); margin-top: .3rem; }
+  .receipt-card .uhoh { color: var(--danger); font-size: 1rem; margin-top: .6rem; line-height: 1.6; }
+  .receipt-card .fine { color: var(--ok); margin-top: .4rem; }
+  .receipt-card small { color: var(--muted); font-weight: 400; }
+
+  /* ---------- 5. ship bar + checklist ---------- */
+  .shipbar {
+    display: flex; align-items: center; gap: .9rem; flex-wrap: wrap;
+    margin-bottom: 1.3rem; padding-bottom: 1.1rem; border-bottom: 1px dashed var(--border);
+  }
+  .verchip { font-size: .85rem; font-weight: 700; padding: .35rem .9rem; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+  .verchip.v2 { border-color: var(--accent); color: #9db4e8; background: rgba(100,120,240,.1); }
+  .combo-banner { display: none; font-size: .92rem; color: var(--warn); border: 1px dashed var(--warn); padding: .35rem .9rem; border-radius: 999px; }
+  .shipbar .spacer { flex: 1; }
+  #shipBtn {
+    padding: .7rem 1.3rem; font-size: 1rem; font-weight: 600; border: none; border-radius: 10px;
+    cursor: pointer; background: var(--accent); color: white;
+  }
+  #shipBtn.rollback { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .checklist h3 { font-size: 1.05rem; margin-bottom: .5rem; }
+  .checklist .cl-sub { color: var(--muted); font-size: .9rem; margin-bottom: .9rem; }
+  .check {
+    display: flex; gap: .7rem; align-items: center; padding: .5rem .6rem; border-radius: 8px;
+    font-size: 1rem; color: var(--muted);
+  }
+  .check.todo { cursor: pointer; }
+  .check.todo:hover { background: var(--card2); }
+  .check .box {
+    width: 22px; height: 22px; flex: 0 0 auto; border-radius: 6px; border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: .85rem;
+  }
+  .check.done { color: var(--text); }
+  .check.done .box { background: rgba(52,201,142,.15); border-color: var(--ok); color: var(--ok); }
+  .check small { color: var(--muted); margin-left: auto; font-size: .8rem; text-align: right; }
+
+  /* ---------- 6. flash sale ---------- */
+  .salehead { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+  .salebadge { font-size: .75rem; letter-spacing: .2em; color: var(--warn); font-weight: 700; }
+  .salename { font-size: 1.6rem; margin: .2rem 0; }
+  .salesub { color: var(--muted); font-size: .92rem; }
+  .stockbox {
+    margin-left: auto; text-align: center; padding: .8rem 1.4rem; border-radius: 12px;
+    background: var(--card2); border: 1px solid var(--border);
+  }
+  .stocknum { font-size: 2.2rem; font-weight: 700; font-family: ui-monospace, monospace; }
+  .stocklbl { color: var(--muted); font-size: .8rem; }
+  .salebtns { display: flex; gap: .8rem; flex-wrap: wrap; }
+  .salebtns button {
+    flex: 1; min-width: 260px; padding: .95rem; font-size: 1.1rem; font-weight: 700;
+    border-radius: 12px; cursor: pointer; border: none;
+  }
+  #buyOneBtn { background: var(--accent); color: white; }
+  #gatesBtn { background: transparent; color: var(--warn); border: 1px solid var(--warn); }
+  .salebtns button:disabled { opacity: .45; cursor: default; }
+  .baseline { min-height: 1.6rem; margin-top: .8rem; color: var(--muted); font-size: .98rem; }
+  .baseline b { color: var(--ok); }
+  .stattiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .8rem; margin: 1.2rem 0 1rem; }
+  .tile { background: var(--card2); border: 1px solid var(--border); border-radius: 12px; padding: .8rem 1rem; text-align: center; }
+  .tnum { font-size: 1.7rem; font-weight: 700; font-family: ui-monospace, monospace; }
+  .tlbl { color: var(--muted); font-size: .8rem; margin-top: .15rem; }
+  .legend { display: flex; gap: 1.1rem; flex-wrap: wrap; color: var(--muted); font-size: .85rem; margin-bottom: .8rem; }
+  .legend .fan { display: inline-block; vertical-align: -2px; margin-right: .35rem; }
+  .fan { width: 14px; height: 14px; border-radius: 50%; position: relative; }
+  .fan.f-queued { background: transparent; border: 1.5px solid #3a4557; }
+  .fan.f-buying { background: #a87c0e; animation: pulse .8s infinite; }
+  .fan.f-ticket { background: #1f9d68; }
+  .fan.f-soldout { background: #6478f0; }
+  .fangrid { display: grid; grid-template-columns: repeat(auto-fill, 14px); gap: 3px; }
+  .simhint { color: var(--muted); font-size: .92rem; margin-top: 1rem; font-style: italic; }
+  .simhint.verdict { color: var(--text); font-style: normal; font-size: 1rem; }
+  .simhint b { color: var(--warn); }
+  .minicalc {
+    margin-top: 1.3rem; padding: 1rem 1.2rem; border-radius: 12px;
+    background: var(--card2); border: 1px solid var(--border);
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  }
+  .minicalc .mc-lbl { color: var(--muted); font-size: .92rem; }
+  .minicalc button {
+    padding: .55rem 1.1rem; font-size: 1rem; border-radius: 10px; cursor: pointer;
+    background: var(--card); color: var(--text); border: 1px solid var(--border);
+  }
+  .minicalc .mc-out { font-family: ui-monospace, monospace; font-size: 1.15rem; min-width: 12rem; }
+  .minicalc .mc-out.stuck { color: var(--warn); }
+
+  /* ---------- code panels ---------- */
+  .codecard h3 { font-size: 1.05rem; margin-bottom: .8rem; }
+  .codecard h3 small { color: var(--muted); font-weight: 400; font-size: .82rem; }
+  .filetabs { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .filetabs button {
+    font-size: .8rem; padding: .4rem .9rem; border-radius: 8px 8px 0 0; cursor: pointer;
+    background: transparent; color: var(--muted); border: 1px solid var(--border); border-bottom: none;
+    font-family: ui-monospace, monospace;
+  }
+  .filetabs button.active { background: #0a0d12; color: var(--teal); }
+  pre.codebox {
+    background: #0a0d12; border: 1px solid var(--border); border-radius: 0 10px 10px 10px;
+    padding: 1rem; overflow-x: auto; font-size: .8rem; line-height: 1.7;
+    font-family: ui-monospace, "Cascadia Code", monospace;
+  }
+  .cl { display: block; padding: 0 .5rem; border-radius: 5px; white-space: pre; color: #c9d1e9; }
+  .cl.bad { background: rgba(239,91,106,.13); outline: 1px solid rgba(239,91,106,.4); }
+  .cl.good { background: rgba(52,201,142,.11); outline: 1px solid rgba(52,201,142,.4); }
+  .cl .note { color: var(--danger); font-weight: 700; }
+  .cl.good .note { color: var(--ok); }
+  .kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+  .cm { color: #5c6a8a; font-style: italic; } .num { color: #f78c6c; }
+
+  .takeaway {
+    margin-top: 1.4rem; padding: 1.1rem 1.4rem; border-radius: 12px; font-size: 1.08rem; line-height: 1.6;
+    background: rgba(100,120,240,.08);
+    border: 1px solid var(--accent);
+  }
+  .takeaway b { color: var(--teal); }
+  .takeaway code { font-family: ui-monospace, monospace; font-size: .9em; color: #9db4e8; }
+
+  /* ---------- takeaway pyramid ---------- */
+  .moral { padding: 4rem 0 5rem; border-top: 1px solid var(--border); text-align: center; }
+  .moral h2 { font-size: 2.2rem; margin-bottom: 2rem; }
+  .pyramid { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: .5rem; }
+  .layer {
+    padding: .9rem 1rem; border-radius: 10px; font-size: 1rem; font-weight: 700; color: #0e1116;
+  }
+  .layer small { display: block; font-weight: 400; font-size: .8rem; margin-top: .15rem; }
+  .layer.load { width: 34%; min-width: 220px; background: var(--danger); }
+  .layer.regression { width: 50%; min-width: 260px; background: #f78c6c; }
+  .layer.manual { width: 66%; background: var(--warn); }
+  .layer.integration { width: 83%; background: var(--teal); }
+  .layer.unit { width: 100%; background: var(--accent); color: white; }
+  .moral .punch { margin-top: 3rem; font-size: 1.35rem; line-height: 1.7; color: var(--muted); }
+  .moral .punch b { color: var(--text); font-size: 1.6rem; display: block; margin-top: .8rem; }
+  footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 2rem 0 3rem; }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="wrap">
+    <span class="brand">Why We Write Tests</span>
+    <a href="#ex1"><span class="n">01</span>Calculator</a>
+    <a href="#ex2"><span class="n">02</span>Seat Booking</a>
+    <a href="#ex3"><span class="n">03</span>Login</a>
+    <a href="#ex4"><span class="n">04</span>Checkout</a>
+    <a href="#ex5"><span class="n">05</span>Pizza Shop v2</a>
+    <a href="#ex6"><span class="n">06</span>Flash Sale</a>
+    <a href="#moral">The Takeaway</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">AN INTERACTIVE CASE STUDY</div>
+    <h1>Why We Write Tests</h1>
+    <p class="sub">Six small apps. Six very real bugs.<br>
+      Each one preventable by a check <b>somebody didn't run</b>.</p>
+    <div class="stats">
+      <span>6 exhibits</span><span>5 kinds of checks</span><span>1 lesson</span>
+    </div>
+    <div class="hint">scroll ↓</div>
+  </div>
+
+  <!-- ================= EXHIBIT 1 · CALCULATOR ================= -->
+  <section class="exhibit reveal" id="ex1">
+    <div class="ex-num">Exhibit 01 · missing unit tests</div>
+    <h2>The Calculator That Couldn't Subtract</h2>
+    <div class="chips">
+      <span class="chip">unit tests: none</span>
+      <span class="chip catch">caught by: one unit test</span>
+    </div>
+    <p class="story">"It's just a calculator — what could possibly go wrong?"
+      Addition works. Multiplication works. Division works.
+      Now try <b>10 − 4</b>.</p>
+
+    <div class="card">
+      <div class="modebar">
+        <div class="switch" data-ex="calc"></div><span class="lbl" id="lbl-calc">Buggy code</span>
+        <p class="caption">Try every operation. <b>Especially minus.</b></p>
+      </div>
+      <div class="calc">
+        <input type="number" id="ca" value="10">
+        <div class="ops">
+          <button data-op="add">+</button>
+          <button data-op="sub">−</button>
+          <button data-op="mul">×</button>
+          <button data-op="div">÷</button>
+        </div>
+        <input type="number" id="cb" value="4">
+        <div class="eq">=</div>
+        <div class="screen" id="cscreen">?</div>
+      </div>
+    </div>
+
+    <div class="card codecard">
+      <div class="filetabs" id="tabs-calc"></div>
+      <pre class="codebox" id="code-calc"></pre>
+    </div>
+
+    <div class="takeaway"><b>One line of test</b> — <code>assert subtract(10, 4) == 6</code> —
+      catches this forever. The test file was empty. Nobody wrote the line.</div>
+  </section>
+
+  <!-- ================= EXHIBIT 2 · SEAT BOOKING ================= -->
+  <section class="exhibit reveal" id="ex2">
+    <div class="ex-num">Exhibit 02 · the race condition</div>
+    <h2>Two Users, One Seat</h2>
+    <div class="chips">
+      <span class="chip">unit tests: all pass</span>
+      <span class="chip catch">caught by: an integration test</span>
+    </div>
+    <p class="story">A ticket-booking app. The code checks that the seat is free, spends 2–4 seconds
+      processing payment, <i>then</i> writes the booking. Alice and Bob both tap seat
+      <b>B3</b> inside that window. The unit tests pass — they book seats one at a time,
+      like polite robots. <b>Real users are not polite robots.</b></p>
+
+    <div class="card">
+      <div class="racebar">
+        <div class="switch" data-ex="seats"></div><span class="lbl" id="lbl-seats">Buggy code</span>
+        <span class="caption">Click the <b>same seat on both phones</b> within ~2s — or let the button do it:</span>
+        <button class="bigbtn" id="raceBtn">▶ Run the race on B3</button>
+      </div>
+      <div class="phones">
+        <div class="phone" id="phone-alice">
+          <div class="who"><span class="avatar">A</span> User 1 — Alice</div>
+          <div class="screen-label">SCREEN</div>
+          <div class="grid"></div>
+          <div class="status">Select a seat.</div>
+          <button class="tixBtn">View ticket</button>
+          <div class="tix"></div>
+        </div>
+        <div class="phone" id="phone-bob">
+          <div class="who"><span class="avatar" style="background:var(--teal)">B</span> User 2 — Bob</div>
+          <div class="screen-label">SCREEN</div>
+          <div class="grid"></div>
+          <div class="status">Select a seat.</div>
+          <button class="tixBtn">View ticket</button>
+          <div class="tix"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card codecard">
+      <div class="filetabs" id="tabs-seats"></div>
+      <pre class="codebox" id="code-seats"></pre>
+    </div>
+
+    <div class="takeaway">The fix is <b>one atomic query</b>: check and claim in a single step,
+      so the database refuses the second buyer. Only a test that books <b>concurrently</b> —
+      an integration test — ever sees this bug.</div>
+  </section>
+
+  <!-- ================= EXHIBIT 3 · LOGIN ================= -->
+  <section class="exhibit reveal" id="ex3">
+    <div class="ex-num">Exhibit 03 · the database has opinions</div>
+    <h2>The Second Alice</h2>
+    <div class="chips">
+      <span class="chip">unit tests: all pass</span>
+      <span class="chip catch">caught by: an integration test</span>
+    </div>
+    <p class="story">A signup form. The table was created with <b>username TEXT UNIQUE</b> —
+      a rule that lives in the database, not in the Python code. The unit tests check the
+      validators and register "alice" exactly once. Then a second user also wants to be alice…</p>
+
+    <div class="card">
+      <div class="modebar">
+        <div class="switch" data-ex="login"></div><span class="lbl" id="lbl-login">Buggy code</span>
+        <p class="caption">Two different users, same great idea. <b>Click Sign up twice.</b></p>
+      </div>
+      <div class="loginbox">
+        <input value="alice" readonly>
+        <input value="••••" readonly>
+        <button class="bigbtn" style="width:100%" id="signupBtn">Sign up as alice</button>
+        <div id="loginout"></div>
+      </div>
+    </div>
+
+    <div class="card codecard">
+      <div class="filetabs" id="tabs-login"></div>
+      <pre class="codebox" id="code-login"></pre>
+    </div>
+
+    <div class="takeaway">Constraints only fire against the <b>real database</b> — a unit test with
+      fakes will never meet them. One integration test through the real API turns a
+      500 crash into a polite "username taken".</div>
+  </section>
+
+  <!-- ================= EXHIBIT 4 · CHECKOUT ================= -->
+  <section class="exhibit reveal" id="ex4">
+    <div class="ex-num">Exhibit 04 · every test is green</div>
+    <h2>The Discount That Never Left the Screen</h2>
+    <div class="chips">
+      <span class="chip">unit tests: all pass</span>
+      <span class="chip">integration tests: all pass</span>
+      <span class="chip catch">caught by: a manual test run</span>
+    </div>
+    <p class="story">A checkout page. The backend's discount math is <b>perfect</b> — unit tested,
+      integration tested, all green. But the frontend applies the discount to the screen…
+      and forgets to put it in the payment request. The button promises ₹189.
+      The card gets charged ₹210.</p>
+
+    <div class="card">
+      <div class="modebar">
+        <div class="switch" data-ex="shop"></div><span class="lbl" id="lbl-shop">Buggy code</span>
+        <p class="caption">Apply the code, then hit Pay. <b>Watch the receipt.</b></p>
+      </div>
+      <div class="shop">
+        <div class="productlist" id="shopList"></div>
+        <div class="summary">
+          <div class="discount">
+            <input id="codeInput" value="STUDENT10" readonly>
+            <button id="applyBtn">Apply</button>
+          </div>
+          <div id="shopRows"></div>
+          <button class="bigpay" id="payBtn">Pay ₹210</button>
+          <div class="receipt-card" id="shopReceipt"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card codecard">
+      <div class="filetabs" id="tabs-shop"></div>
+      <pre class="codebox" id="code-shop"></pre>
+    </div>
+
+    <div class="takeaway">A green test suite only covers <b>what somebody thought to test</b> —
+      no suite covers the code that isn't there. Before you ship:
+      <b>click through it like a real user.</b></div>
+  </section>
+
+  <!-- ================= EXHIBIT 5 · PIZZA SHOP V2 ================= -->
+  <section class="exhibit reveal" id="ex5">
+    <div class="ex-num">Exhibit 05 · the change that broke the past</div>
+    <h2>The Combo That Made Juice Free</h2>
+    <div class="chips">
+      <span class="chip">unit tests: all pass</span>
+      <span class="chip catch">caught by: a regression pass</span>
+    </div>
+    <p class="story">This pizza shop's pricing function ran correctly <b>for months</b>. Then the
+      product team wanted a Lunch Combo, a developer refactored <code style="font-family:ui-monospace,monospace">cart_total()</code>
+      to handle it, and the combo worked beautifully. So everyone tested the combo — and only the combo.
+      Nobody re-tested a plain old cart. A lone juice now rings up at <b>₹0</b>, and nobody will ever
+      report it: <b>customers don't complain about being undercharged.</b></p>
+
+    <div class="card">
+      <div class="shipbar">
+        <span class="verchip" id="verChip">v1 — plain pricing, live for months</span>
+        <span class="combo-banner" id="comboBanner">NEW: 🍕 Pizza + 🧃 Juice = ₹199 Lunch Combo</span>
+        <span class="spacer"></span>
+        <button id="shipBtn">🚀 Ship v2 — Lunch Combo</button>
+      </div>
+      <p class="caption" style="margin-bottom:1rem">On v1, price a juice. Then ship v2, test the combo
+        (it works!) — and <b>re-price that lone juice</b>.</p>
+      <div class="shop">
+        <div class="productlist" id="pizzaList"></div>
+        <div class="summary">
+          <div id="pizzaRows"></div>
+          <button class="bigpay" id="chargeBtn">Charge ₹90</button>
+          <div class="receipt-card" id="pizzaReceipt"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card checklist" id="regCard" style="display:none">
+      <h3>Release checklist — v2 “Lunch Combo”</h3>
+      <div class="cl-sub">What got tested before v2 went live. Click a box as you re-test that flow:</div>
+      <div class="check done"><span class="box">✓</span> NEW — pizza + juice rings up as a ₹199 combo</div>
+      <div class="check todo"><span class="box"></span> single-item carts <small>worked in v1 — never re-tested</small></div>
+      <div class="check todo"><span class="box"></span> carts with no combo in them <small>worked in v1 — never re-tested</small></div>
+      <div class="check todo"><span class="box"></span> leftover pizzas / juices beyond the combo <small>worked in v1 — never re-tested</small></div>
+    </div>
+
+    <div class="card codecard">
+      <div class="filetabs" id="tabs-pizza"></div>
+      <pre class="codebox" id="code-pizza"></pre>
+    </div>
+
+    <div class="takeaway">The new feature worked. The suite was green. What broke was a flow that
+      <b>used to work</b> — a regression — and the only thing that catches those is
+      <b>re-testing the past</b>: a regression pass over every flow that already worked, every time
+      shared code changes. Undercharges are the cruelest kind: overcharged customers write angry
+      emails; undercharged ones stay very, very quiet.</div>
+  </section>
+
+  <!-- ================= EXHIBIT 6 · FLASH SALE ================= -->
+  <section class="exhibit reveal" id="ex6">
+    <div class="ex-num">Exhibit 06 · launch day, at launch scale</div>
+    <h2>It Worked For One Fan</h2>
+    <div class="chips">
+      <span class="chip">functional tests: all pass</span>
+      <span class="chip catch">caught by: a load test</span>
+    </div>
+    <p class="story">A ticket drop: 120 tickets, released at a fixed time. Buying one takes about
+      2 seconds — <b>every functional test agrees it works</b>. Then 200 fans show up in the same
+      two seconds. The server's ~40 worker threads fill with payment delays, everyone else queues,
+      and fan #200 waits 13 seconds to be told "sold out". Meanwhile the <b>rest of the site</b>
+      is stuck in the same queue.</p>
+
+    <div class="card">
+      <div class="salehead">
+        <div>
+          <div class="salebadge">⚡ TICKET DROP</div>
+          <h3 class="salename">Arijit Singh — Live in Pune</h3>
+          <div class="salesub">tickets released at a fixed time · every fan shows up at once</div>
+        </div>
+        <div class="stockbox">
+          <div class="stocknum" id="stockNum">120</div>
+          <div class="stocklbl">tickets left</div>
+        </div>
+      </div>
+      <div class="salebtns">
+        <button id="buyOneBtn">🎟 Buy one ticket — just you</button>
+        <button id="gatesBtn">🌊 Open the gates — 200 fans at once</button>
+      </div>
+      <div class="baseline" id="buyOneOut"></div>
+
+      <div id="simPanel" style="display:none">
+        <div class="stattiles">
+          <div class="tile"><div class="tnum" id="stSold">0</div><div class="tlbl">got a ticket</div></div>
+          <div class="tile"><div class="tnum" id="stSoldout">0</div><div class="tlbl">told “sold out”</div></div>
+          <div class="tile"><div class="tnum" id="stMedian">–</div><div class="tlbl">median wait</div></div>
+          <div class="tile"><div class="tnum" id="stSlow">–</div><div class="tlbl">slowest wait</div></div>
+        </div>
+        <div class="legend">
+          <span><i class="fan f-queued"></i>queued</span>
+          <span><i class="fan f-buying"></i>buying…</span>
+          <span><i class="fan f-ticket"></i>got a ticket</span>
+          <span><i class="fan f-soldout"></i>told “sold out”</span>
+        </div>
+        <div class="fangrid" id="fanGrid"></div>
+      </div>
+
+      <div class="minicalc">
+        <span class="mc-lbl">Meanwhile, the rest of your site:</span>
+        <button id="mcBtn">2 + 2 =</button>
+        <span class="mc-out" id="mcOut">?</span>
+      </div>
+    </div>
+
+    <div class="card codecard">
+      <div class="filetabs" id="tabs-sale"></div>
+      <pre class="codebox" id="code-sale"></pre>
+    </div>
+
+    <div class="takeaway">Nothing in this code is wrong — it has simply <b>never been asked</b> to do
+      200 things at once. Functional tests ask "does it work?". A <b>load test</b> (Locust, k6,
+      JMeter) asks "for how many, how fast, and where's the cliff?" — and it asks
+      <b>before launch day</b>, because launch day will ask anyway.</div>
+  </section>
+
+  <!-- ================= TAKEAWAY ================= -->
+  <section class="moral reveal" id="moral">
+    <h2>The Takeaway</h2>
+    <div class="pyramid">
+      <div class="layer load">Load test<small>caught exhibit 06 — launch day, before launch day</small></div>
+      <div class="layer regression">Regression pass<small>caught 05 — the combo that broke old carts</small></div>
+      <div class="layer manual">Manual test run<small>caught 04 — the frontend that lied</small></div>
+      <div class="layer integration">Integration tests<small>caught 02 (the race) and 03 (the database's rules)</small></div>
+      <div class="layer unit">Unit tests<small>caught 01 — and they're so cheap there's no excuse</small></div>
+    </div>
+    <p class="punch">Every bug in this demo shipped for the same reason —<br>
+      the check that would have caught it was never run.
+      <b>Write the test. Run the pass. Future you is watching.</b></p>
+  </section>
+
+  <footer>Why We Write Tests · an interactive case study on testing · flip the switches, read the code, remember the lesson</footer>
+</div>
+
+<script>
+/* ================= state ================= */
+const fixed = { calc: false, seats: false, login: false, shop: false };
+
+/* ================= code snippets ================= */
+const K = t => `<span class="kw">${t}</span>`, F = t => `<span class="fn">${t}</span>`,
+      S = t => `<span class="str">${t}</span>`, C = t => `<span class="cm">${t}</span>`;
+const L = (t, cls = "", note = "") =>
+  `<span class="cl ${cls}">${t}${note ? `  <span class="note">${note}</span>` : ""}</span>`;
+
+const CODE = {
+  calc: {
+    buggy: {
+      "calculator.py":
+        L(`${K("def")} ${F("add")}(a, b):`) +
+        L(`    ${K("return")} a + b`) +
+        L("") +
+        L(`${K("def")} ${F("subtract")}(a, b):`) +
+        L(`    ${K("return")} b - a`, "bad", "← 🐛 the bug: b − a") +
+        L("") +
+        L(`${K("def")} ${F("multiply")}(a, b):`) +
+        L(`    ${K("return")} a * b`),
+      "test_calculator.py":
+        L(C("# this file was EMPTY. this is all it needed:")) +
+        L("") +
+        L(`${K("def")} ${F("test_subtract")}():`) +
+        L(`    ${K("assert")} calculator.subtract(${S("10")}, ${S("4")}) == ${S("6")}`, "good", "← one line = bug caught"),
+    },
+    fixed: {
+      "calculator.py":
+        L(`${K("def")} ${F("add")}(a, b):`) +
+        L(`    ${K("return")} a + b`) +
+        L("") +
+        L(`${K("def")} ${F("subtract")}(a, b):`) +
+        L(`    ${K("return")} a - b`, "good", "← ✅ fixed") +
+        L("") +
+        L(`${K("def")} ${F("multiply")}(a, b):`) +
+        L(`    ${K("return")} a * b`),
+      "test_calculator.py":
+        L(C("# now it runs on every commit, forever:")) +
+        L("") +
+        L(`${K("def")} ${F("test_subtract")}():`) +
+        L(`    ${K("assert")} calculator.subtract(${S("10")}, ${S("4")}) == ${S("6")}`, "good", "← PASSED ✅"),
+    },
+  },
+
+  seats: {
+    buggy: {
+      "booking.py":
+        L(`${K("def")} ${F("book_seat")}(seat, user):`) +
+        L(`    taken = db.execute(${S('"SELECT booked_by…"')})`, "bad", "← 1. look") +
+        L(`    ${K("if")} taken:`) +
+        L(`        ${K("return")} {${S('"ok"')}: ${K("False")}}`) +
+        L("") +
+        L(`    time.sleep(random.uniform(${S("2")}, ${S("4")}))`, "bad", "← 2. wait (the world changes)") +
+        L("") +
+        L(`    db.execute(${S('"UPDATE seats SET booked_by…"')})`, "bad", "← 3. write — too late") +
+        L(`    ${K("return")} {${S('"ok"')}: ${K("True")}}`),
+      "test_booking.py":
+        L(C("# the unit tests — all green, all sequential:")) +
+        L(`${K("def")} ${F("test_booking_a_taken_seat_fails")}():`) +
+        L(`    booking.book_seat(${S('"B3"')}, ${S('"alice"')})`) +
+        L(`    ${K("assert")} booking.book_seat(${S('"B3"')}, ${S('"bob"')})[${S('"ok"')}] ${K("is")} ${K("False")}`, "", "← passes! one at a time…") +
+        L("") +
+        L(C("# the integration test nobody wrote:")) +
+        L(`${K("def")} ${F("test_two_users_race_for_the_same_seat")}():`) +
+        L(`    ${C("# book B3 from TWO threads at once")}`) +
+        L(`    ${K("assert")} len(wins) == ${S("1")}`, "good", "← this would have FAILED"),
+    },
+    fixed: {
+      "booking.py":
+        L(`${K("def")} ${F("book_seat")}(seat, user):`) +
+        L(`    time.sleep(random.uniform(${S("2")}, ${S("4")}))`, "", "← pay first") +
+        L("") +
+        L(`    claimed = db.execute(`) +
+        L(`        ${S('"UPDATE seats SET booked_by = ?"')}`) +
+        L(`        ${S('"WHERE id = ? AND booked_by IS NULL"')})`, "good", "← ✅ look & write in ONE step") +
+        L(`    ${K("if")} claimed.rowcount == ${S("0")}:`) +
+        L(`        ${K("return")} {${S('"ok"')}: ${K("False")}}`, "good", "← second buyer politely refused") +
+        L(`    ${K("return")} {${S('"ok"')}: ${K("True")}}`),
+      "test_booking.py":
+        L(C("# now part of the suite:")) +
+        L(`${K("def")} ${F("test_two_users_race_for_the_same_seat")}():`) +
+        L(`    ${C("# book B3 from TWO threads at once")}`) +
+        L(`    ${K("assert")} len(wins) == ${S("1")}`, "good", "← PASSED ✅ exactly one winner"),
+    },
+  },
+
+  login: {
+    buggy: {
+      "users.py":
+        L(`db.execute(${S('"CREATE TABLE users"')}`) +
+        L(`    ${S('"(username TEXT UNIQUE, password TEXT)"')})`, "bad", "← the database has a rule…") +
+        L("") +
+        L(`${K("def")} ${F("signup")}(username, password):`) +
+        L(`    ${C("# …validation passes…")}`) +
+        L(`    db.execute(${S('"INSERT INTO users VALUES (?, ?)"')})`, "bad", "← 🐛 …the code never handles it") +
+        L(`    ${K("return")} {${S('"ok"')}: ${K("True")}}`),
+      "test_users.py":
+        L(C("# unit tests — all green, alice signs up ONCE:")) +
+        L(`${K("def")} ${F("test_signup_then_login")}():`) +
+        L(`    ${K("assert")} users.signup(${S('"alice"')}, ${S('"1234"')})[${S('"ok"')}]`, "", "← passes!") +
+        L("") +
+        L(C("# the integration test nobody wrote:")) +
+        L(`${K("def")} ${F("test_signing_up_twice")}():`) +
+        L(`    client.post(${S('"/api/signup"')}, …)  ${C("# alice")}`) +
+        L(`    second = client.post(${S('"/api/signup"')}, …)  ${C("# alice again")}`) +
+        L(`    ${K("assert")} second.json()[${S('"ok"')}] ${K("is")} ${K("False")}`, "good", "← would EXPLODE: IntegrityError"),
+    },
+    fixed: {
+      "users.py":
+        L(`${K("def")} ${F("signup")}(username, password):`) +
+        L(`    ${C("# …validation passes…")}`) +
+        L(`    ${K("try")}:`) +
+        L(`        db.execute(${S('"INSERT INTO users VALUES (?, ?)"')})`) +
+        L(`    ${K("except")} sqlite3.IntegrityError:`, "good", "← ✅ the rule is now handled") +
+        L(`        ${K("return")} {${S('"ok"')}: ${K("False")},`) +
+        L(`                ${S('"error"')}: ${S('"That username is already taken"')}}`, "good") +
+        L(`    ${K("return")} {${S('"ok"')}: ${K("True")}}`),
+      "test_users.py":
+        L(C("# now part of the suite:")) +
+        L(`${K("def")} ${F("test_signing_up_twice")}():`) +
+        L(`    ${K("assert")} second.json()[${S('"ok"')}] ${K("is")} ${K("False")}`, "good", "← PASSED ✅ polite error, no crash"),
+    },
+  },
+
+  shop: {
+    buggy: {
+      "frontend.js":
+        L(C("// the backend is PERFECT. this is the frontend:")) +
+        L(`applyBtn.onclick = () => {`) +
+        L(`  total = ${S("189")};  ${C("// screen shows the discount")}`) +
+        L(`};`) +
+        L("") +
+        L(`payBtn.onclick = () => {`) +
+        L(`  api(${S('"/api/pay"')}, { items: cart });`, "bad", "← 🐛 where's the discount code?") +
+        L(`};`),
+      "test_checkout.py":
+        L(C("# unit tests:        4 passed ✅")) +
+        L(C("# integration tests: 3 passed ✅")) +
+        L("") +
+        L(`${K("def")} ${F("test_pay_applies_discount")}():`) +
+        L(`    r = client.post(${S('"/api/pay"')}, json={…, ${S('"code"')}: ${S('"STUDENT10"')}})`) +
+        L(`    ${K("assert")} r.json()[${S('"charged"')}] == ${S("189")}`, "", "← passes! backend is honest") +
+        L("") +
+        L(C("# no test clicks the ACTUAL button.")) +
+        L(C("# the bug lives in the gap."), "bad"),
+    },
+    fixed: {
+      "frontend.js":
+        L(`payBtn.onclick = () => {`) +
+        L(`  api(${S('"/api/pay"')}, { items: cart, code });`, "good", "← ✅ send what the user saw") +
+        L(`};`),
+      "test_checkout.py":
+        L(C("# the fix came from a MANUAL TEST RUN:")) +
+        L(C("# 1. add items  2. apply code  3. pay")) +
+        L(C("# 4. read the receipt like a real customer")) +
+        L("") +
+        L(C("# button said ₹189 → receipt says ₹189 ✅"), "good"),
+    },
+  },
+
+  pizza: {
+    static: {
+      "pricing.py · v1":
+        L(`${K("def")} ${F("cart_total_v1")}(items):`) +
+        L(`    ${S('"""The original. Boring. Correct. Live for months."""')}`) +
+        L(`    total = ${S("0")}`) +
+        L(`    ${K("for")} product_id, qty ${K("in")} items.items():`) +
+        L(`        total += price_of(product_id) * qty`, "good", "← every item, charged") +
+        L(`    ${K("return")} total`),
+      "pricing.py · v2 (shipped)":
+        L(`${K("def")} ${F("cart_total_v2")}(items):`) +
+        L(`    ${S('"""v2: every Pizza + Juice pair rings up as one Lunch Combo."""')}`) +
+        L(`    combos = min(items.get(${S('"pizza"')}, ${S("0")}), items.get(${S('"juice"')}, ${S("0")}))`) +
+        L(`    total = combos * COMBO_PRICE`) +
+        L(`    ${K("for")} product_id, qty ${K("in")} items.items():`) +
+        L(`        ${K("if")} product_id ${K("in")} (${S('"pizza"')}, ${S('"juice"')}):`) +
+        L(`            ${K("continue")}  ${C("# combo items were already priced above")}`, "bad", "← 🐛 a lone juice? leftovers? never charged") +
+        L(`        total += price_of(product_id) * qty`) +
+        L(`    ${K("return")} total`),
+      "test_pizzashop.py":
+        L(C("# written when v1 shipped — run against v1:   all pass ✅")) +
+        L(`${K("def")} ${F("test_single_item_cart")}(): …`) +
+        L("") +
+        L(C("# written when v2 shipped — tests the NEW feature:   all pass ✅")) +
+        L(`${K("def")} ${F("test_combo_prices_pizza_plus_juice_at_199")}(): …`) +
+        L("") +
+        L(C("# nobody re-ran the OLD flows against the NEW code.")) +
+        L(`${C("# cart_total_v2({\"juice\": 1}) == 0")}`, "bad", "← the check nobody ran"),
+    },
+  },
+
+  sale: {
+    static: {
+      "flashsale.py":
+        L(`${K("def")} ${F("buy")}(user):`) +
+        L(`    time.sleep(random.uniform(${S("1.5")}, ${S("3")}))  ${C("# payment gateway")}`, "", "← fine… for ONE user") +
+        L(`    ${K("with")} stock_lock:`) +
+        L(`        ${K("if")} tickets_left > ${S("0")}:`) +
+        L(`            tickets_left -= ${S("1")}`) +
+        L(`            ${K("return")} {${S('"ok"')}: ${K("True")}}`) +
+        L(`    ${K("return")} {${S('"ok"')}: ${K("False")}, ${S('"error"')}: ${S('"Sold out"')}}`) +
+        L("") +
+        L(C("# there is no bug in this file. that's the point.")),
+      "locustfile.py · never written":
+        L(C("# the load test nobody ran:")) +
+        L(`${K("class")} ${F("Fan")}(HttpUser):`) +
+        L(`    ${K("@task")}`) +
+        L(`    ${K("def")} ${F("buy_ticket")}(self):`) +
+        L(`        self.client.post(${S('"/api/flashsale/buy"')}, …)`) +
+        L("") +
+        L(`${C("# $ locust -u 200 -r 100   # 200 fans, all at once")}`, "good", "← run it before launch day") +
+        L(`${C("# → p95 wait: 12.6 s. timeouts at the tail.")}`) +
+        L(`${C("#   now you know BEFORE the drop — not during it.")}`),
+    },
+  },
+};
+
+/* ================= code panel rendering ================= */
+const activeTab = {};
+function renderCode(ex) {
+  const variants = CODE[ex];
+  const files = variants.static || variants[fixed[ex] ? "fixed" : "buggy"];
+  const names = Object.keys(files);
+  if (!names.includes(activeTab[ex])) activeTab[ex] = names[0];
+  document.getElementById("tabs-" + ex).innerHTML = names.map(n =>
+    `<button class="${n === activeTab[ex] ? "active" : ""}" onclick="pickTab('${ex}','${n}')">${n}</button>`).join("");
+  document.getElementById("code-" + ex).innerHTML = files[activeTab[ex]];
+}
+function pickTab(ex, name) { activeTab[ex] = name; renderCode(ex); }
+
+/* ================= buggy/fixed toggles (exhibits 1–4) ================= */
+document.querySelectorAll(".switch").forEach(sw => {
+  sw.onclick = () => {
+    const ex = sw.dataset.ex;
+    fixed[ex] = !fixed[ex];
+    sw.classList.toggle("on", fixed[ex]);
+    const lbl = document.getElementById("lbl-" + ex);
+    lbl.textContent = fixed[ex] ? "Fixed code" : "Buggy code";
+    lbl.classList.toggle("on", fixed[ex]);
+    renderCode(ex);
+    resetWidget(ex);
+  };
+});
+
+function resetWidget(ex) {
+  if (ex === "calc") { const s = document.getElementById("cscreen"); s.textContent = "?"; s.className = "screen"; }
+  if (ex === "seats") resetSeats();
+  if (ex === "login") { signups = 0; document.getElementById("loginout").innerHTML = ""; }
+  if (ex === "shop") { applied = false; refreshShop(); }
+}
+
+/* ================= 1. calculator ================= */
+document.querySelectorAll(".calc .ops button").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".calc .ops button").forEach(b => b.classList.remove("picked"));
+    btn.classList.add("picked");
+    const a = Number(document.getElementById("ca").value);
+    const b = Number(document.getElementById("cb").value);
+    const op = btn.dataset.op;
+    const ops = {
+      add: a + b,
+      sub: fixed.calc ? a - b : b - a,
+      mul: a * b,
+      div: b === 0 ? "—" : +(a / b).toFixed(4),
+    };
+    const screen = document.getElementById("cscreen");
+    screen.textContent = ops[op];
+    screen.className = "screen" + (op === "sub" && !fixed.calc ? " wrong" : "");
+  };
+});
+
+/* ================= 2. seat booking — a faithful simulation ================= */
+const ROWS = ["A", "B", "C", "D"], COLS = [1, 2, 3, 4, 5, 6];
+let seatState = {};
+const phones = {
+  alice: { el: document.getElementById("phone-alice"), user: "alice", mySeat: null, busy: false },
+  bob: { el: document.getElementById("phone-bob"), user: "bob", mySeat: null, busy: false },
+};
+let seatTimers = [];
+
+function resetSeats() {
+  seatTimers.forEach(clearTimeout);
+  seatTimers = [];
+  seatState = {};
+  ROWS.forEach(r => COLS.forEach(c => seatState[r + c] = null));
+  Object.values(phones).forEach(ph => {
+    ph.mySeat = null; ph.busy = false;
+    setStatus(ph, "Select a seat.", "");
+    ph.el.querySelector(".tixBtn").style.display = "none";
+    ph.el.querySelector(".tix").style.display = "none";
+    drawSeats(ph);
+  });
+  document.getElementById("raceBtn").disabled = false;
+}
+
+function drawSeats(ph) {
+  const grid = ph.el.querySelector(".grid");
+  grid.innerHTML = "";
+  ROWS.forEach(r => COLS.forEach(c => {
+    const id = r + c;
+    const div = document.createElement("div");
+    div.className = "seat";
+    div.textContent = id;
+    if (seatState[id] === ph.user) div.classList.add("mine");
+    else if (seatState[id]) div.classList.add("taken");
+    else div.onclick = () => bookSeat(ph, id, div);
+    grid.appendChild(div);
+  }));
+}
+
+function bookSeat(ph, id, div) {
+  if (ph.busy) return;
+  // 1. look — exactly like the buggy backend
+  if (seatState[id]) { setStatus(ph, `Seat ${id} is already booked.`, "bad"); return; }
+  ph.busy = true;
+  if (div) div.classList.add("pending");
+  setStatus(ph, "Processing payment… (takes 2–4 s)", "");
+  const delay = 2000 + Math.random() * 1500;
+  seatTimers.push(setTimeout(() => {
+    ph.busy = false;
+    if (fixed.seats) {
+      // ✅ atomic claim: check AND write in one step
+      if (seatState[id]) {
+        setStatus(ph, `Seat ${id} was just booked by someone else. Pick another.`, "bad");
+        drawSeats(ph);
+        return;
+      }
+    }
+    // 🐛 buggy path: write without re-checking — last write wins
+    seatState[id] = ph.user;
+    ph.mySeat = id;
+    setStatus(ph, `Seat ${id} confirmed.`, "good");
+    ph.el.querySelector(".tixBtn").style.display = "block";
+    Object.values(phones).forEach(drawSeats);
+  }, delay));
+}
+
+function setStatus(ph, text, cls) {
+  const el = ph.el.querySelector(".status");
+  el.textContent = text;
+  el.className = "status " + cls;
+}
+
+function fakeQR(seed) {
+  let hash = 0;
+  for (const ch of seed) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff;
+  let cells = "";
+  for (let i = 0; i < 81; i++) {
+    hash = (hash * 1103515245 + 12345) & 0x7fffffff;
+    cells += `<i class="${hash % 3 ? "on" : ""}"></i>`;
+  }
+  return `<div class="qr">${cells}</div>`;
+}
+
+Object.values(phones).forEach(ph => {
+  ph.el.querySelector(".tixBtn").onclick = () => {
+    const box = ph.el.querySelector(".tix");
+    // ticket validation: who does the DATABASE say owns this seat?
+    if (seatState[ph.mySeat] === ph.user) {
+      box.className = "tix";
+      box.innerHTML = `<div class="trow">${fakeQR(ph.mySeat + ph.user)}
+        <div><b>ADMIT ONE</b><br>Seat ${ph.mySeat}<br>${ph.user}</div></div>`;
+    } else {
+      box.className = "tix fail";
+      box.textContent = `Ticket validation failed: seat ${ph.mySeat} belongs to ${seatState[ph.mySeat]}, not ${ph.user}!`;
+    }
+    box.style.display = "block";
+  };
+});
+
+document.getElementById("raceBtn").onclick = () => {
+  resetSeats();
+  document.getElementById("raceBtn").disabled = true;
+  const seatDiv = ph => [...ph.el.querySelectorAll(".seat")].find(d => d.textContent === "B3");
+  bookSeat(phones.alice, "B3", seatDiv(phones.alice));
+  seatTimers.push(setTimeout(() => {
+    bookSeat(phones.bob, "B3", seatDiv(phones.bob));
+  }, 300));
+  seatTimers.push(setTimeout(() => {
+    document.getElementById("raceBtn").disabled = false;
+  }, 4200));
+};
+
+/* ================= 3. login ================= */
+let signups = 0;
+document.getElementById("signupBtn").onclick = () => {
+  signups++;
+  const out = document.getElementById("loginout");
+  if (signups === 1) {
+    out.innerHTML = `<div class="msg good">Welcome, alice. (user #1 is in)</div>`;
+  } else if (!fixed.login) {
+    out.innerHTML = `<div class="msg bad crash">💥 500 — Internal Server Error
+      <small>sqlite3.IntegrityError: UNIQUE constraint failed: users.username<br>
+      User #2 sees a dead app. The database enforced a rule the code forgot about.</small></div>`;
+  } else {
+    out.innerHTML = `<div class="msg bad">That username is already taken — a polite error, not a crash.</div>`;
+  }
+};
+
+/* ================= 4. checkout ================= */
+const SHOP_PRODUCTS = [
+  { id: "coffee", name: "Coffee", price: 60 },
+  { id: "pizza", name: "Pizza Slice", price: 150 },
+  { id: "sandwich", name: "Sandwich", price: 120 },
+  { id: "juice", name: "Juice", price: 90 },
+];
+const shopCart = { coffee: 1, pizza: 1, sandwich: 0, juice: 0 };
+let applied = false;
+
+function shopSubtotal() {
+  return SHOP_PRODUCTS.reduce((sum, p) => sum + p.price * shopCart[p.id], 0);
+}
+
+function buildShop() {
+  const list = document.getElementById("shopList");
+  list.innerHTML = "";
+  SHOP_PRODUCTS.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "product";
+    row.innerHTML = `<span>${p.name}</span><span class="price">₹${p.price}</span>
+      <span class="step"><button>−</button><span class="qty">${shopCart[p.id]}</span><button>+</button></span>`;
+    const [minus, plus] = row.querySelectorAll("button");
+    minus.onclick = () => { shopCart[p.id] = Math.max(0, shopCart[p.id] - 1); applied = false; refreshShop(); };
+    plus.onclick = () => { shopCart[p.id]++; applied = false; refreshShop(); };
+    list.appendChild(row);
+  });
+  refreshShop();
+}
+
+function shopDiscounted() { return Math.floor(shopSubtotal() * 90 / 100); }
+
+function refreshShop() {
+  document.querySelectorAll("#shopList .product").forEach((row, i) => {
+    row.querySelector(".qty").textContent = shopCart[SHOP_PRODUCTS[i].id];
+  });
+  const sub = shopSubtotal();
+  const total = applied ? shopDiscounted() : sub;
+  document.getElementById("shopRows").innerHTML =
+    `<div class="row"><span>Subtotal</span><span>₹${sub}</span></div>` +
+    (applied ? `<div class="row"><span>Discount (STUDENT10)</span><span>−₹${sub - total}</span></div>` : "") +
+    `<div class="row total"><span>Total</span>
+       <span>${applied ? `<span class="old">₹${sub}</span>` : ""}₹${total}</span></div>`;
+  document.getElementById("payBtn").textContent = `Pay ₹${total}`;
+  document.getElementById("shopReceipt").style.display = "none";
+}
+
+document.getElementById("applyBtn").onclick = () => { applied = true; refreshShop(); };
+
+document.getElementById("payBtn").onclick = () => {
+  const sub = shopSubtotal();
+  if (sub === 0) return;
+  const agreed = applied ? shopDiscounted() : sub;
+  // 🐛 buggy frontend: the payment request never includes the code
+  const charged = fixed.shop ? agreed : sub;
+  const r = document.getElementById("shopReceipt");
+  r.innerHTML = `<div>Payment complete</div><div class="charged">Charged: ₹${charged}</div>` +
+    (charged !== agreed
+      ? `<div class="uhoh">Wait — the button said ₹${agreed}. The customer just paid
+         ₹${charged - agreed} more than they agreed to.<br>
+         Every test was green. Nobody clicked the button.</div>`
+      : `<div class="fine">Exactly what the button promised.</div>`);
+  r.style.display = "block";
+};
+
+/* ================= 5. pizza shop v2 ================= */
+const PIZZA_PRODUCTS = [
+  { id: "pizza", name: "Pizza Slice", price: 150 },
+  { id: "juice", name: "Juice", price: 90 },
+  { id: "garlic", name: "Garlic Bread", price: 80 },
+  { id: "brownie", name: "Brownie", price: 110 },
+];
+const COMBO_PRICE = 199;
+const pizzaCart = { pizza: 0, juice: 1, garlic: 0, brownie: 0 };
+let shipped = false;
+let pizzaOrders = 0;
+
+function pizzaMenuPrice() {
+  return PIZZA_PRODUCTS.reduce((sum, p) => sum + p.price * pizzaCart[p.id], 0);
+}
+
+// the same two functions that live on the real server:
+function cartTotalV1(items) {
+  let total = 0;
+  for (const p of PIZZA_PRODUCTS) total += p.price * items[p.id];
+  return total;
+}
+function cartTotalV2(items) {
+  const combos = Math.min(items.pizza, items.juice);
+  let total = combos * COMBO_PRICE;
+  for (const p of PIZZA_PRODUCTS) {
+    if (p.id === "pizza" || p.id === "juice") continue; // 🐛 already priced above… right?
+    total += p.price * items[p.id];
+  }
+  return total;
+}
+function pizzaRegisterTotal() { return shipped ? cartTotalV2(pizzaCart) : cartTotalV1(pizzaCart); }
+
+function buildPizza() {
+  const list = document.getElementById("pizzaList");
+  list.innerHTML = "";
+  PIZZA_PRODUCTS.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "product";
+    row.innerHTML = `<span>${p.name}</span><span class="price">₹${p.price}</span>
+      <span class="step"><button>−</button><span class="qty">${pizzaCart[p.id]}</span><button>+</button></span>`;
+    const [minus, plus] = row.querySelectorAll("button");
+    minus.onclick = () => { pizzaCart[p.id] = Math.max(0, pizzaCart[p.id] - 1); refreshPizza(); };
+    plus.onclick = () => { pizzaCart[p.id]++; refreshPizza(); };
+    list.appendChild(row);
+  });
+  refreshPizza();
+}
+
+function refreshPizza() {
+  document.querySelectorAll("#pizzaList .product").forEach((row, i) => {
+    row.querySelector(".qty").textContent = pizzaCart[PIZZA_PRODUCTS[i].id];
+  });
+  const menu = pizzaMenuPrice();
+  const total = pizzaRegisterTotal();
+  document.getElementById("pizzaRows").innerHTML =
+    `<div class="row"><span>Menu price</span><span>₹${menu}</span></div>` +
+    (total < menu ? `<div class="row"><span>Combo savings</span><span>−₹${menu - total}</span></div>` : "") +
+    `<div class="row total"><span>Register total</span><span>₹${total}</span></div>`;
+  document.getElementById("chargeBtn").textContent = `Charge ₹${total}`;
+  document.getElementById("pizzaReceipt").style.display = "none";
+}
+
+document.getElementById("shipBtn").onclick = () => {
+  shipped = !shipped;
+  const chip = document.getElementById("verChip");
+  chip.textContent = shipped ? "v2 — Lunch Combo update" : "v1 — plain pricing, live for months";
+  chip.classList.toggle("v2", shipped);
+  document.getElementById("comboBanner").style.display = shipped ? "inline-block" : "none";
+  const btn = document.getElementById("shipBtn");
+  btn.textContent = shipped ? "⏪ Roll back to v1" : "🚀 Ship v2 — Lunch Combo";
+  btn.classList.toggle("rollback", shipped);
+  document.getElementById("regCard").style.display = shipped ? "block" : "none";
+  activeTab.pizza = shipped ? "pricing.py · v2 (shipped)" : "pricing.py · v1";
+  renderCode("pizza");
+  refreshPizza();
+};
+
+document.getElementById("chargeBtn").onclick = () => {
+  if (pizzaMenuPrice() === 0) return;
+  pizzaOrders++;
+  const r = document.getElementById("pizzaReceipt");
+  r.innerHTML = `<div>Payment complete — order #${pizzaOrders} <small>(v${shipped ? 2 : 1} pricing)</small></div>
+    <div class="charged">Charged: ₹${pizzaRegisterTotal()}</div>`;
+  r.style.display = "block";
+};
+
+document.querySelectorAll("#regCard .check.todo").forEach(item => {
+  item.onclick = () => {
+    item.classList.toggle("done");
+    item.querySelector(".box").textContent = item.classList.contains("done") ? "✓" : "";
+  };
+});
+
+/* ================= 6. flash sale — a faithful simulation ================= */
+const SALE = { threads: 40, capacity: 120, fans: 200, speed: 0.75 };
+let saleRunning = false;
+let saleTimer = null;
+let mcQueuedAt = null;
+
+document.getElementById("buyOneBtn").onclick = () => {
+  const btn = document.getElementById("buyOneBtn");
+  const out = document.getElementById("buyOneOut");
+  btn.disabled = true;
+  out.textContent = "Processing payment…";
+  const took = (1.5 + Math.random() * 1.5).toFixed(1);
+  setTimeout(() => {
+    out.innerHTML = `🎟 You got a ticket in <b>${took}s</b>. Feels fine, right? Now imagine you weren't alone.`;
+    btn.disabled = false;
+  }, took * 1000);
+};
+
+function planSale() {
+  // 200 fans arrive within ~2s; 40 worker threads; each purchase holds one for 1.5–3s
+  const fans = [];
+  for (let i = 0; i < SALE.fans; i++) fans.push({ id: i, arrive: Math.random() * 2 });
+  const order = [...fans].sort((a, b) => a.arrive - b.arrive);
+  const workers = Array(SALE.threads).fill(0);
+  order.forEach(f => {
+    let w = 0;
+    for (let j = 1; j < SALE.threads; j++) if (workers[j] < workers[w]) w = j;
+    const start = Math.max(f.arrive, workers[w]);
+    f.finish = start + 1.5 + Math.random() * 1.5;
+    workers[w] = f.finish;
+    f.wait = f.finish - f.arrive;
+  });
+  let sold = 0;
+  [...fans].sort((a, b) => a.finish - b.finish).forEach(f => {
+    f.status = sold < SALE.capacity ? (sold++, "ticket") : "soldout";
+  });
+  return { fans, lastFinish: Math.max(...fans.map(f => f.finish)) };
+}
+
+document.getElementById("gatesBtn").onclick = () => {
+  if (saleRunning) return;
+  saleRunning = true;
+  document.getElementById("gatesBtn").disabled = true;
+  document.getElementById("simPanel").style.display = "block";
+  const grid = document.getElementById("fanGrid");
+  grid.innerHTML = "";
+  const plan = planSale();
+  plan.fans.forEach(f => {
+    const dot = document.createElement("div");
+    dot.className = "fan f-queued";
+    dot.title = `fan #${f.id + 1} — queued`;
+    grid.appendChild(dot);
+  });
+  const t0 = performance.now();
+  saleTimer = setInterval(() => {
+    const now = (performance.now() - t0) / 1000 / SALE.speed; // virtual seconds
+    const dots = grid.children;
+    let soldNow = 0;
+    const done = [];
+    plan.fans.forEach((f, i) => {
+      let st = "f-queued", label = "queued";
+      if (now >= f.finish) {
+        st = "f-" + f.status;
+        label = (f.status === "ticket" ? "got a ticket" : "told “sold out”") + ` after ${f.wait.toFixed(1)}s`;
+        done.push(f.wait);
+        if (f.status === "ticket") soldNow++;
+      } else if (now >= f.arrive) {
+        st = "f-buying"; label = "buying…";
+      }
+      dots[i].className = "fan " + st;
+      dots[i].title = `fan #${f.id + 1} — ${label}`;
+    });
+    done.sort((a, b) => a - b);
+    document.getElementById("stockNum").textContent = SALE.capacity - soldNow;
+    document.getElementById("stSold").textContent = soldNow;
+    document.getElementById("stSoldout").textContent = done.length - soldNow;
+    document.getElementById("stMedian").textContent = done.length ? done[Math.floor(done.length / 2)].toFixed(1) + "s" : "–";
+    document.getElementById("stSlow").textContent = done.length ? done[done.length - 1].toFixed(1) + "s" : "–";
+    if (now >= plan.lastFinish) {
+      clearInterval(saleTimer);
+      saleRunning = false;
+      document.getElementById("gatesBtn").disabled = false;
+      const waits = plan.fans.map(f => f.wait).sort((a, b) => a - b);
+      const hint = document.createElement("div");
+      hint.className = "simhint verdict";
+      hint.innerHTML = `The first fan was done in <b>${waits[0].toFixed(1)}s</b> —
+        the slowest waited <b>${waits[waits.length - 1].toFixed(1)}s</b> just to hear an answer.
+        Every functional test passed. Finding this before launch day is what a load test is for.`;
+      const old = document.querySelector("#simPanel .simhint");
+      if (old) old.remove();
+      document.getElementById("simPanel").appendChild(hint);
+      if (mcQueuedAt !== null) answerMiniCalc();
+    }
+  }, 100);
+};
+
+/* the rest of the site, during the sale */
+document.getElementById("mcBtn").onclick = () => {
+  const out = document.getElementById("mcOut");
+  if (!saleRunning) {
+    out.textContent = "4  (instant)";
+    out.className = "mc-out";
+    return;
+  }
+  mcQueuedAt = performance.now();
+  out.textContent = "… waiting for a free worker …";
+  out.className = "mc-out stuck";
+};
+function answerMiniCalc() {
+  const waited = ((performance.now() - mcQueuedAt) / 1000).toFixed(1);
+  const out = document.getElementById("mcOut");
+  out.textContent = `4 — after ${waited}s 💀`;
+  out.className = "mc-out stuck";
+  mcQueuedAt = null;
+}
+
+/* ================= boot ================= */
+["calc", "seats", "login", "shop", "pizza", "sale"].forEach(renderCode);
+resetSeats();
+buildShop();
+buildPizza();
+
+const io = new IntersectionObserver(entries =>
+  entries.forEach(e => e.isIntersecting && e.target.classList.add("in")),
+  { threshold: 0.1 });
+document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+</script>
+</body>
+</html>
